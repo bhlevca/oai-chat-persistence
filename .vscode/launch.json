@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--disable-extension=ms-python.python",
+        "--disable-extension=ms-python.vscode-pylance"
+      ],
+      "autoAttachChildProcesses": false,
+      "stopOnEntry": false,
+      "env": { "NODE_OPTIONS": "", "PYTHONPATH": "" }
+    }
+  ]
+}

@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-{{NONCE}}';" />
+<title>OAI Chat</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  background: var(--vscode-editor-background, #1e1e1e);
+  color: var(--vscode-editor-foreground, #d4d4d4);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Session bar (replaces sidebar) ─────────────── */
+
+#session-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+  background: var(--vscode-sideBar-background, #252526);
+  flex-shrink: 0;
+}
+
+#session-select {
+  flex: 1;
+  background: var(--vscode-dropdown-background, #3c3c3c);
+  color: var(--vscode-dropdown-foreground, #d4d4d4);
+  border: 1px solid var(--vscode-dropdown-border, #555);
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  min-width: 0;
+}
+#session-select:focus { outline: 1px solid var(--vscode-focusBorder, #007acc); border-color: var(--vscode-focusBorder, #007acc); }
+
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--vscode-icon-foreground, #c5c5c5);
+  padding: 3px 5px;
+  border-radius: 3px;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-btn:hover  { background: var(--vscode-toolbar-hoverBackground, #2a2d2e); }
+.icon-btn:active { opacity: 0.75; }
+
+/* ── Main chat area ─────────────────────────────── */
+
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+#chat-header {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-height: 34px;
+}
+
+#model-select {
+  flex: 1;
+  background: var(--vscode-dropdown-background, #3c3c3c);
+  color: var(--vscode-dropdown-foreground, #d4d4d4);
+  border: 1px solid var(--vscode-dropdown-border, #555);
+  border-radius: 3px;
+  padding: 2px 5px;
+  font-size: 12px;
+  cursor: pointer;
+  display: none;
+  min-width: 0;
+}
+
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+/* Welcome / empty state */
+#no-session-msg {
+  margin: auto;
+  text-align: center;
+  color: var(--vscode-descriptionForeground, #888);
+  line-height: 1.8;
+  font-size: 13px;
+}
+#no-session-msg strong { color: var(--vscode-editor-foreground, #d4d4d4); }
+
+#empty-chat-msg {
+  margin: auto;
+  text-align: center;
+  color: var(--vscode-descriptionForeground, #888);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* Message rows */
+.msg-row { display: flex; flex-direction: column; gap: 3px; max-width: 88%; }
+.msg-row.user { align-self: flex-end; }
+.msg-row.assistant { align-self: flex-start; }
+.msg-row.system { align-self: center; max-width: 96%; }
+
+.msg-role {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 4px;
+}
+.msg-row.user .msg-role     { color: var(--vscode-terminal-ansiCyan,   #4ec9b0); text-align: right; }
+.msg-row.assistant .msg-role{ color: var(--vscode-terminal-ansiGreen,  #89d185); }
+.msg-row.system .msg-role   { color: var(--vscode-terminal-ansiYellow, #dcdcaa); text-align: center; }
+
+.msg-bubble {
+  padding: 8px 12px;
+  border-radius: 8px;
+  line-height: 1.55;
+  font-size: 13px;
+  word-break: break-word;
+  position: relative;
+}
+.msg-row.user .msg-bubble {
+  background: var(--vscode-button-background, #0e639c);
+  color: var(--vscode-button-foreground, #fff);
+  border-bottom-right-radius: 2px;
+  white-space: pre-wrap;
+}
+.msg-row.assistant .msg-bubble {
+  background: var(--vscode-editorWidget-background, #252526);
+  border: 1px solid var(--vscode-panel-border, #3c3c3c);
+  border-bottom-left-radius: 2px;
+}
+.msg-row.system .msg-bubble {
+  background: transparent;
+  border: 1px dashed var(--vscode-panel-border, #3c3c3c);
+  font-size: 11px;
+  font-style: italic;
+  color: var(--vscode-descriptionForeground, #888);
+  white-space: pre-wrap;
+  border-radius: 4px;
+}
+
+/* Markdown inside assistant bubbles */
+.msg-bubble pre {
+  background: var(--vscode-textCodeBlock-background, #1a1a1a);
+  border: 1px solid var(--vscode-panel-border, #3c3c3c);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin: 6px 0;
+  overflow-x: auto;
+  white-space: pre;
+  font-family: var(--vscode-editor-font-family, 'Cascadia Code', 'Consolas', monospace);
+  font-size: 12px;
+}
+.msg-bubble code {
+  font-family: var(--vscode-editor-font-family, 'Cascadia Code', 'Consolas', monospace);
+  font-size: 12px;
+  background: var(--vscode-textCodeBlock-background, #2d2d2d);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.msg-bubble pre code { background: none; padding: 0; }
+.msg-bubble p { margin: 4px 0; }
+.msg-bubble p:first-child { margin-top: 0; }
+.msg-bubble p:last-child  { margin-bottom: 0; }
+
+/* Copy button */
+.msg-copy {
+  display: none;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: var(--vscode-button-secondaryBackground, #3a3d41);
+  color: var(--vscode-button-secondaryForeground, #ccc);
+  border: none;
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-size: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.msg-bubble:hover .msg-copy { display: block; }
+.msg-copy:hover { background: var(--vscode-button-background, #0e639c); color: #fff; }
+
+/* Compact card */
+.compact-card {
+  margin: 8px 12px;
+  padding: 8px 12px;
+  border-radius: 5px;
+  border: 1px solid var(--vscode-panel-border, #3c3c3c);
+  background: var(--vscode-editor-inactiveSelectionBackground, #3a3d41);
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #888);
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.compact-card .compact-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  user-select: none;
+}
+.compact-card .compact-body { flex: 1; }
+.compact-card .compact-header {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--vscode-foreground, #ccc);
+}
+.compact-card .compact-summary {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
+  max-height: 80px;
+  overflow: hidden;
+  position: relative;
+}
+.compact-card .compact-summary.expanded { max-height: none; }
+.compact-card .compact-toggle {
+  background: none;
+  border: none;
+  color: var(--vscode-textLink-foreground, #3794ff);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 0;
+  margin-top: 3px;
+}
+
+/* Typing indicator */
+#typing-indicator {
+  display: none;
+  padding: 8px 16px;
+  flex-shrink: 0;
+}
+#typing-indicator.visible {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+#typing-indicator span {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #888);
+  margin-right: 4px;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vscode-descriptionForeground, #888);
+  animation: pulse 1.2s infinite;
+}
+.dot:nth-child(3) { animation-delay: 0.2s; }
+.dot:nth-child(4) { animation-delay: 0.4s; }
+@keyframes pulse { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+
+/* Error banner */
+#error-banner {
+  display: none;
+  margin: 0 12px 6px;
+  padding: 7px 10px;
+  background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+  color: #f48771;
+  border: 1px solid var(--vscode-inputValidation-errorBorder, #be1100);
+  border-radius: 4px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+#error-banner.visible { display: block; }
+
+/* ── Input area ──────────────────────────────────── */
+
+#input-area {
+  border-top: 1px solid var(--vscode-panel-border, #3c3c3c);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex-shrink: 0;
+}
+#input-area.disabled { opacity: 0.5; pointer-events: none; }
+
+#msg-input {
+  width: 100%;
+  background: var(--vscode-input-background, #3c3c3c);
+  color: var(--vscode-input-foreground, #d4d4d4);
+  border: 1px solid var(--vscode-input-border, #555);
+  border-radius: 5px;
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  resize: none;
+  min-height: 36px;
+  max-height: 150px;
+  line-height: 1.45;
+  outline: none;
+}
+#msg-input:focus { border-color: var(--vscode-focusBorder, #007acc); }
+#msg-input::placeholder { color: var(--vscode-input-placeholderForeground, #666); }
+
+#input-actions { display: flex; align-items: center; gap: 6px; }
+.spacer { flex: 1; }
+
+/* Buttons */
+.btn {
+  background: var(--vscode-button-background, #0e639c);
+  color: var(--vscode-button-foreground, #fff);
+  border: none;
+  border-radius: 3px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover    { background: var(--vscode-button-hoverBackground, #1177bb); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.secondary {
+  background: var(--vscode-button-secondaryBackground, #3a3d41);
+  color: var(--vscode-button-secondaryForeground, #ccc);
+}
+.btn.secondary:hover { background: var(--vscode-button-secondaryHoverBackground, #45494e); }
+.btn.danger { background: #5a1d1d; color: #f48771; }
+.btn.danger:hover { background: #6e2020; }
+
+/* ── Modals ──────────────────────────────────────── */
+
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 50;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--vscode-editorWidget-background, #252526);
+  border: 1px solid var(--vscode-panel-border, #555);
+  border-radius: 6px;
+  padding: 18px 20px;
+  width: 360px;
+  max-width: 92vw;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.modal h3 { font-size: 13px; font-weight: 700; }
+
+.modal input,
+.modal select,
+.modal textarea {
+  width: 100%;
+  background: var(--vscode-input-background, #3c3c3c);
+  color: var(--vscode-input-foreground, #d4d4d4);
+  border: 1px solid var(--vscode-input-border, #555);
+  border-radius: 3px;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+.modal input:focus,
+.modal select:focus,
+.modal textarea:focus { border-color: var(--vscode-focusBorder, #007acc); }
+.modal textarea { min-height: 90px; resize: vertical; }
+
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 2px; }
+
+/* ── Scrollbar ───────────────────────────────────── */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background, #424242);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground, #555);
+}
+
+/* Streaming cursor blink */
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.cursor { animation: blink 0.7s step-end infinite; font-weight: bold; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Session bar ── -->
+  <div id="session-bar">
+    <select id="session-select" title="Switch session">
+      <option value="">— no session —</option>
+    </select>
+    <button class="icon-btn" id="btn-new"           title="New session">＋</button>
+    <button class="icon-btn" id="btn-refresh-models" title="Refresh model list">⟳</button>
+  </div>
+
+  <!-- ── Main ── -->
+  <div id="main">
+
+    <div id="chat-header">
+      <select id="model-select" title="Active model"></select>
+      <button class="icon-btn" id="btn-compact"    title="Compact context now"   style="display:none">⬡</button>
+      <button class="icon-btn" id="btn-sys-prompt" title="Set system prompt"     style="display:none">⚙</button>
+      <button class="icon-btn" id="btn-export"     title="Export as JSON"        style="display:none">↓</button>
+      <button class="icon-btn" id="btn-clear"      title="Clear all messages"    style="display:none">🗑</button>
+      <button class="icon-btn" id="btn-del-session" title="Delete this session"  style="display:none;color:var(--vscode-errorForeground)">✕ del</button>
+    </div>
+
+    <div id="messages">
+      <div id="no-session-msg">
+        <strong>OAI Chat</strong><br/>
+        Click <strong>＋</strong> above to start a new session.<br/>
+        <div id="landing-models" style="margin-top:14px"></div>
+      </div>
+    </div>
+
+    <div id="typing-indicator">
+      <span>Thinking…</span>
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+
+    <div id="error-banner"></div>
+
+    <div id="input-area" class="disabled">
+      <textarea id="msg-input"
+        placeholder="Message… (Enter↵ send, Shift+Enter newline) — @path/file  @find:*.js  @search:myFunc  @/absolute/path"
+        rows="1"></textarea>
+      <div id="input-actions">
+        <button class="btn danger" id="btn-stop" style="display:none">■ Stop</button>
+        <div class="spacer"></div>
+        <button class="btn" id="btn-send" disabled>Send</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── New Session Modal ── -->
+<div class="modal-overlay" id="modal-new">
+  <div class="modal">
+    <h3>New Chat Session</h3>
+    <input type="text" id="new-name"
+           placeholder="Session name (e.g. trading-ideas)"
+           maxlength="64" autocomplete="off" />
+    <select id="new-model">
+      <option value="">— select model —</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn secondary" id="new-cancel">Cancel</button>
+      <button class="btn" id="new-create">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── System Prompt Modal ── -->
+<div class="modal-overlay" id="modal-sys">
+  <div class="modal">
+    <h3>System Prompt</h3>
+    <textarea id="sys-content"
+      placeholder="You are a helpful assistant…"></textarea>
+    <div class="modal-actions">
+      <button class="btn secondary" id="sys-cancel">Cancel</button>
+      <button class="btn" id="sys-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<script nonce="{{NONCE}}">
+'use strict';
+
+const vscode = acquireVsCodeApi();
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+const state = {
+  sessions: [],    // [{ name, model, messageCount, updated }]
+  models:   [],    // [{ id, label, vendor, family }]
+  session:  null,  // currently loaded full session object
+  streaming: false,
+  streamBuffer: '',
+};
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+
+const $  = (id) => document.getElementById(id);
+const sessionSelect  = $('session-select');
+const btnDelSession  = $('btn-del-session');
+const messages       = $('messages');
+const modelSelect    = $('model-select');
+const msgInput       = $('msg-input');
+const btnSend        = $('btn-send');
+const btnStop        = $('btn-stop');
+const inputArea      = $('input-area');
+const typingIndicator= $('typing-indicator');
+const errorBanner    = $('error-banner');
+const btnCompact     = $('btn-compact');
+const btnSysPrompt   = $('btn-sys-prompt');
+const btnExport      = $('btn-export');
+const btnClear       = $('btn-clear');
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+
+vscode.postMessage({ type: 'init' });
+
+// ── Message handler (extension → webview) ─────────────────────────────────────
+
+window.addEventListener('message', ({ data: msg }) => {
+  switch (msg.type) {
+
+    case 'init':
+      state.sessions = msg.sessions;
+      state.models   = msg.models;
+      populateSessionDropdown();
+      populateModelDropdowns();
+      break;
+
+    case 'sessions':
+      state.sessions = msg.sessions;
+      populateSessionDropdown();
+      break;
+
+    case 'models':
+      state.models = msg.models;
+      populateModelDropdowns();
+      break;
+
+    case 'sessionLoaded':
+      state.session = msg.session;
+      state._pendingUserContent = null;  // re-render from storage — no duplicate needed
+      renderChat();
+      break;
+
+    case 'compacting':
+      // Context compaction is running — lock UI, show indicator
+      state.streaming = true;
+      typingIndicator.querySelector('span').textContent = 'Compacting context…';
+      typingIndicator.classList.add('visible');
+      btnStop.style.display = 'inline-block';
+      btnSend.style.display = 'none';
+      inputArea.classList.add('disabled');
+      hideError();
+      break;
+
+    case 'compactDone':
+      // Reset label; if compaction failed show a warning
+      typingIndicator.querySelector('span').textContent = 'Thinking…';
+      if (!msg.success) {
+        state.streaming = false;
+        typingIndicator.classList.remove('visible');
+        btnStop.style.display = 'none';
+        btnSend.style.display = 'inline-block';
+        inputArea.classList.remove('disabled');
+        showError('Context compaction failed — continuing without it.');
+      }
+      break;
+
+    case 'streamStart':
+      state.streaming    = true;
+      state.streamBuffer = '';
+      typingIndicator.querySelector('span').textContent = 'Thinking…';
+      typingIndicator.classList.add('visible');
+      btnStop.style.display = 'inline-block';
+      btnSend.style.display = 'none';
+      inputArea.classList.add('disabled');
+      hideError();
+      appendStreamBubble();
+      break;
+
+    case 'chunk':
+      state.streamBuffer += msg.content;
+      updateStreamBubble(state.streamBuffer);
+      break;
+
+    case 'streamEnd':
+      state.streaming = false;
+      typingIndicator.classList.remove('visible');
+      btnStop.style.display = 'none';
+      btnSend.style.display = 'inline-block';
+      inputArea.classList.remove('disabled');
+      if (state.streamBuffer && state.streamBuffer.trim()) {
+        finalizeStreamBubble(state.streamBuffer);
+      } else {
+        // No content — remove the ghost bubble so it doesn't disrupt order
+        if (streamRow) { streamRow.remove(); streamRow = null; }
+      }
+      // Update local session state so re-renders stay correct
+      if (state.session && msg.assistantContent && !msg.aborted) {
+        state.session.messages.push({
+          role: 'assistant',
+          content: msg.assistantContent,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      if (msg.error) showError('Error: ' + msg.error);
+      if (msg.aborted && !msg.error && !msg.assistantContent) {
+        // streamEnd after manual compact-only — no error to show
+        hideError();
+      }
+      break;
+  }
+});
+
+// ── Session dropdown ──────────────────────────────────────────────────────────
+
+function populateSessionDropdown() {
+  const cur = state.session?.name || sessionSelect.value;
+  sessionSelect.innerHTML = '<option value="">\u2014 select or create session \u2014</option>';
+  for (const s of state.sessions) {
+    const o = document.createElement('option');
+    o.value = s.name;
+    o.textContent = s.name;
+    sessionSelect.appendChild(o);
+  }
+  sessionSelect.value = cur;
+}
+
+// ── Render chat area ──────────────────────────────────────────────────────────
+
+function renderChat() {
+  const s = state.session;
+  if (!s) return;
+
+  // Keep session dropdown in sync
+  sessionSelect.value = s.name;
+  btnDelSession.style.display = 'inline-flex';
+
+  modelSelect.style.display = 'block';
+  modelSelect.value = s.model || '';
+  // If stored model isn't in list, add placeholder
+  if (s.model && !modelSelect.value) {
+    const o = document.createElement('option');
+    o.value = s.model;
+    o.textContent = s.model + ' (not found — refresh ⟳)';
+    modelSelect.prepend(o);
+    modelSelect.value = s.model;
+  }
+  btnCompact.style.display   = 'inline-flex';
+  btnSysPrompt.style.display = 'inline-flex';
+  btnExport.style.display    = 'inline-flex';
+  btnClear.style.display     = 'inline-flex';
+  inputArea.classList.remove('disabled');
+  btnSend.disabled = !s.model;
+
+  messages.innerHTML = '';
+
+  if (!s.messages.length) {
+    const div = document.createElement('div');
+    div.id = 'empty-chat-msg';
+    div.innerHTML = 'No messages yet.<br/>Type below to start chatting.';
+    messages.appendChild(div);
+    return;
+  }
+
+  for (const m of s.messages) {
+    appendMsg(m.role, m.content, { compact: !!m._compact, compactedCount: m.compactedCount });
+  }
+  scrollBottom();
+}
+
+function clearActiveSession() {
+  state.session = null;
+  sessionSelect.value    = '';
+  btnDelSession.style.display = 'none';
+  modelSelect.style.display   = 'none';
+  btnCompact.style.display    = 'none';
+  btnSysPrompt.style.display  = 'none';
+  btnExport.style.display     = 'none';
+  btnClear.style.display      = 'none';
+  inputArea.classList.add('disabled');
+  btnSend.disabled = true;
+  messages.innerHTML = '';
+  const div = document.createElement('div');
+  div.id = 'no-session-msg';
+  div.innerHTML = '<strong>OAI Chat</strong><br/>Click <strong>＋</strong> above to start a new session.<br/><div id="landing-models" style="margin-top:14px"></div>';
+  messages.appendChild(div);
+  updateLandingModels();
+}
+
+// ── Message rendering ─────────────────────────────────────────────────────────
+
+function appendMsg(role, content, opts = {}) {
+  // Compact summaries get a dedicated card instead of a normal bubble
+  if (opts.compact) {
+    appendCompactCard(content, opts.compactedCount);
+    return;
+  }
+
+  const row = document.createElement('div');
+  row.className = `msg-row ${role}`;
+
+  const label = document.createElement('div');
+  label.className = 'msg-role';
+  label.textContent = role;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  // Only render markdown for assistant; user/system are plain pre-wrapped
+  bubble.innerHTML = (role === 'assistant') ? renderMarkdown(content) : plainText(content);
+
+  const copy = document.createElement('button');
+  copy.className = 'msg-copy';
+  copy.textContent = 'copy';
+  copy.addEventListener('click', () => {
+    navigator.clipboard.writeText(content).then(() => {
+      copy.textContent = 'copied!';
+      setTimeout(() => (copy.textContent = 'copy'), 1500);
+    }).catch(() => {});
+  });
+  bubble.appendChild(copy);
+
+  row.appendChild(label);
+  row.appendChild(bubble);
+  messages.appendChild(row);
+}
+
+function appendCompactCard(summary, compactedCount) {
+  const card = document.createElement('div');
+  card.className = 'compact-card';
+
+  const countLabel = compactedCount ? ` (${compactedCount} messages)` : '';
+  card.innerHTML = `
+    <div class="compact-icon">⨁</div>
+    <div class="compact-body">
+      <div class="compact-header">Context compacted${countLabel}</div>
+      <div class="compact-summary">${plainText(summary)}</div>
+      <button class="compact-toggle">show more</button>
+    </div>`;
+
+  const summaryEl = card.querySelector('.compact-summary');
+  const toggle    = card.querySelector('.compact-toggle');
+  toggle.addEventListener('click', () => {
+    const expanded = summaryEl.classList.toggle('expanded');
+    toggle.textContent = expanded ? 'show less' : 'show more';
+  });
+
+  messages.appendChild(card);
+}
+
+// ── Streaming bubble ──────────────────────────────────────────────────────────
+
+let streamRow = null;
+
+function appendStreamBubble() {
+  if (streamRow) streamRow.remove();
+  streamRow = document.createElement('div');
+  streamRow.className = 'msg-row assistant';
+
+  const label = document.createElement('div');
+  label.className = 'msg-role';
+  label.textContent = 'assistant';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.id = 'stream-bubble';
+
+  streamRow.appendChild(label);
+  streamRow.appendChild(bubble);
+  messages.appendChild(streamRow);
+  scrollBottom();
+}
+
+function updateStreamBubble(content) {
+  const b = $('stream-bubble');
+  if (b) {
+    b.innerHTML = renderMarkdown(content) + '<span class="cursor">▋</span>';
+    scrollBottom();
+  }
+}
+
+function finalizeStreamBubble(content) {
+  const b = $('stream-bubble');
+  if (b) {
+    b.removeAttribute('id');   // free the id so the next stream gets a clean element
+    b.innerHTML = renderMarkdown(content);
+    const copy = document.createElement('button');
+    copy.className = 'msg-copy';
+    copy.textContent = 'copy';
+    copy.addEventListener('click', () => {
+      navigator.clipboard.writeText(content).then(() => {
+        copy.textContent = 'copied!';
+        setTimeout(() => (copy.textContent = 'copy'), 1500);
+      }).catch(() => {});
+    });
+    b.appendChild(copy);
+  }
+  streamRow = null;
+  scrollBottom();
+}
+
+// ── Markdown renderer ─────────────────────────────────────────────────────────
+
+function renderMarkdown(text) {
+  let html = '';
+  const fenceRe = /```([\w]*)\n?([\s\S]*?)```/g;
+  let last = 0;
+  let m;
+  while ((m = fenceRe.exec(text)) !== null) {
+    html += inlineMd(esc(text.slice(last, m.index)));
+    const lang = esc(m[1] || '');
+    html += `<pre><code class="language-${lang}">${esc(m[2] || '')}</code></pre>`;
+    last = fenceRe.lastIndex;
+  }
+  html += inlineMd(esc(text.slice(last)));
+  return html;
+}
+
+function inlineMd(s) {
+  // inline code
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // bold
+  s = s.replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>');
+  s = s.replace(/__(.+?)__/gs,     '<strong>$1</strong>');
+  // italic
+  s = s.replace(/\*([^*\n]+)\*/g,  '<em>$1</em>');
+  s = s.replace(/_([^_\n]+)_/g,    '<em>$1</em>');
+  // line breaks
+  s = s.replace(/\n/g, '<br/>');
+  return s;
+}
+
+function plainText(text) {
+  return esc(text).replace(/\n/g, '<br/>');
+}
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g,  '&amp;')
+    .replace(/</g,  '&lt;')
+    .replace(/>/g,  '&gt;')
+    .replace(/"/g,  '&quot;')
+    .replace(/'/g,  '&#39;');
+}
+
+// ── Model dropdown helpers ────────────────────────────────────────────────────
+
+function populateModelDropdowns() {
+  // Main header select
+  const cur = modelSelect.value;
+  modelSelect.innerHTML = '';
+
+  if (!state.models.length) {
+    const o = document.createElement('option');
+    o.value = '';
+    o.textContent = 'No models — install GitHub Copilot or a VS Code LM extension';
+    modelSelect.appendChild(o);
+  } else {
+    // Leading blank so users must actively pick a model
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = '— select model —';
+    modelSelect.appendChild(blank);
+
+    for (const m of state.models) {
+      const o = document.createElement('option');
+      o.value = m.id;
+      o.textContent = m.label + (m.vendor ? ` (${m.vendor})` : '');
+      modelSelect.appendChild(o);
+    }
+  }
+  modelSelect.value = cur;
+
+  // New-session modal select
+  const newModel = $('new-model');
+  const curNew = newModel.value;
+  newModel.innerHTML = '<option value="">— select model —</option>';
+  for (const m of state.models) {
+    const o = document.createElement('option');
+    o.value = m.id;
+    o.textContent = m.label + (m.vendor ? ` (${m.vendor})` : '');
+    newModel.appendChild(o);
+  }
+  newModel.value = curNew;
+
+  // Update landing page model list if no session is active
+  if (!state.session) updateLandingModels();
+}
+
+function updateLandingModels() {
+  const el = $('landing-models');
+  if (!el) return;
+  if (!state.models.length) {
+    el.innerHTML = '<span style="font-size:11px;color:var(--vscode-descriptionForeground,#888)">No models found — install the <strong>GitHub Copilot</strong> extension and sign in.</span>';
+    return;
+  }
+  el.innerHTML = '<div style="font-size:11px;color:var(--vscode-descriptionForeground,#888);margin-bottom:6px">Available models:</div>' +
+    state.models.map(m =>
+      `<div style="font-size:12px;padding:3px 8px;margin:2px 0;border-radius:3px;background:var(--vscode-editor-inactiveSelectionBackground,#3a3d41);color:var(--vscode-foreground,#ccc)">${m.label}${m.vendor ? ` <span style="opacity:.6">(${m.vendor})</span>` : ''}</div>`
+    ).join('');
+}
+
+// ── Sending a message ─────────────────────────────────────────────────────────
+
+function sendMessage() {
+  if (!state.session || state.streaming) return;
+  const content = msgInput.value.trim();
+  if (!content) return;
+
+  const modelId = modelSelect.value;
+  if (!modelId) {
+    showError('Select a model before sending.');
+    return;
+  }
+
+  msgInput.value = '';
+  autoResize();
+
+  // Add user bubble immediately for responsiveness, and track it so we can
+  // remove it if sessionLoaded (compaction) re-renders the whole chat.
+  appendMsg('user', content);
+  state._pendingUserContent = content;   // sentinel — cleared on sessionLoaded
+  scrollBottom();
+
+  post('sendMessage', { name: state.session.name, modelId, content });
+
+  // Update local state so subsequent renderChat() calls include the message
+  state.session.messages.push({ role: 'user', content, timestamp: new Date().toISOString() });
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+
+function post(type, payload) {
+  vscode.postMessage({ type, ...payload });
+}
+
+function scrollBottom() {
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function showError(msg) {
+  errorBanner.textContent = msg;
+  errorBanner.classList.add('visible');
+  setTimeout(hideError, 8000);
+}
+function hideError() {
+  errorBanner.classList.remove('visible');
+}
+
+function autoResize() {
+  msgInput.style.height = 'auto';
+  msgInput.style.height = Math.min(msgInput.scrollHeight, 150) + 'px';
+}
+
+// ── Event listeners ───────────────────────────────────────────────────────────
+
+// Send
+btnSend.addEventListener('click', sendMessage);
+btnStop.addEventListener('click', () => post('stopGeneration', {}));
+
+msgInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+msgInput.addEventListener('input', autoResize);
+
+// Model change
+modelSelect.addEventListener('change', () => {
+  if (!state.session) return;
+  const modelId = modelSelect.value;
+  state.session.model = modelId;
+  btnSend.disabled = !modelId;
+  post('updateModel', { name: state.session.name, modelId });
+});
+
+// Header buttons
+btnSysPrompt.addEventListener('click', () => {
+  if (!state.session) return;
+  const sys = state.session.messages.find((m) => m.role === 'system');
+  $('sys-content').value = sys?.content || '';
+  $('modal-sys').classList.add('open');
+  $('sys-content').focus();
+});
+
+btnExport.addEventListener('click', () => {
+  if (state.session) post('exportSession', { name: state.session.name });
+});
+
+btnClear.addEventListener('click', () => {
+  if (!state.session) return;
+  if (!confirm(`Clear all messages in "${state.session.name}"?`)) return;
+  post('clearSession', { name: state.session.name });
+});
+
+btnDelSession.addEventListener('click', () => {
+  if (!state.session) return;
+  // VS Code webviews block confirm() — use a two-step arm/fire approach.
+  if (!btnDelSession.dataset.confirming) {
+    btnDelSession.dataset.confirming = '1';
+    btnDelSession.textContent = 'delete?';
+    btnDelSession.title = 'Click again to confirm deletion';
+    btnDelSession.style.cssText += ';background:#a33;color:#fff;padding:0 6px';
+    setTimeout(() => {
+      delete btnDelSession.dataset.confirming;
+      btnDelSession.textContent = '×';
+      btnDelSession.title = 'Delete current session';
+      btnDelSession.style.cssText = btnDelSession.style.cssText
+        .replace(/;?background:[^;]+/, '').replace(/;?color:[^;]+/, '').replace(/;?padding:[^;]+/, '');
+    }, 3000);
+    return;
+  }
+  // Second click — confirmed.
+  delete btnDelSession.dataset.confirming;
+  btnDelSession.textContent = '×';
+  btnDelSession.title = 'Delete current session';
+  btnDelSession.style.cssText = btnDelSession.style.cssText
+    .replace(/;?background:[^;]+/, '').replace(/;?color:[^;]+/, '').replace(/;?padding:[^;]+/, '');
+  const name = state.session.name;
+  clearActiveSession();
+  post('deleteSession', { name });
+});
+
+btnCompact.addEventListener('click', () => {
+  if (!state.session || state.streaming) return;
+  const modelId = modelSelect.value || state.session.model;
+  if (!modelId) { showError('Select a model before compacting.'); return; }
+  post('compactNow', { name: state.session.name, modelId });
+});
+
+// Session dropdown change
+sessionSelect.addEventListener('change', () => {
+  const name = sessionSelect.value;
+  if (name) {
+    post('loadSession', { name });
+  } else {
+    clearActiveSession();
+  }
+});
+
+// Refresh models
+$('btn-refresh-models').addEventListener('click', () => post('refreshModels', {}));
+
+// ── New session modal ─────────────────────────────────────────────────────────
+
+$('btn-new').addEventListener('click', () => {
+  $('new-name').value = '';
+  $('modal-new').classList.add('open');
+  $('new-name').focus();
+});
+
+$('new-cancel').addEventListener('click', () => $('modal-new').classList.remove('open'));
+
+$('new-create').addEventListener('click', () => {
+  const name = $('new-name').value.trim();
+  const modelId = $('new-model').value;
+  if (!name) { $('new-name').focus(); return; }
+  post('createSession', { name, modelId });
+  $('modal-new').classList.remove('open');
+});
+
+$('new-name').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter')  $('new-create').click();
+  if (e.key === 'Escape') $('new-cancel').click();
+});
+
+// ── System prompt modal ───────────────────────────────────────────────────────
+
+$('sys-cancel').addEventListener('click', () => $('modal-sys').classList.remove('open'));
+
+$('sys-save').addEventListener('click', () => {
+  if (!state.session) return;
+  const content = $('sys-content').value;
+  post('setSystemPrompt', { name: state.session.name, content });
+  $('modal-sys').classList.remove('open');
+});
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach((overlay) => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});
+
+// Close modals on Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.open').forEach((o) => o.classList.remove('open'));
+  }
+});
+</script>
+</body>
+</html>

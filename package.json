@@ -1,0 +1,87 @@
+{
+  "name": "oai-chat-persistence",
+  "displayName": "OAI Chat Persistence",
+  "description": "Persistent, multi-session AI chat sidebar for any VS Code language model — Ollama, Copilot, and more. Keeps full conversation history across restarts with automatic context compaction.",
+  "version": "0.1.0",
+  "publisher": "bhlevca",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bhlevca/oai-chat-persistence.git"
+  },
+  "homepage": "https://github.com/bhlevca/oai-chat-persistence",
+  "bugs": {
+    "url": "https://github.com/bhlevca/oai-chat-persistence/issues"
+  },
+  "categories": ["AI", "Other"],
+  "keywords": ["chat", "ai", "ollama", "copilot", "llm", "persistence", "language model", "session"],
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e2e",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "oaiChatPersistence.openChat",
+        "title": "OAI Chat: Open Chat Panel",
+        "category": "OAI Chat"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "oai-chat-sidebar",
+          "title": "OAI Chat",
+          "icon": "src/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "oai-chat-sidebar": [
+        {
+          "type": "webview",
+          "id": "oaiChatPersistence.chatView",
+          "name": "OAI Chat"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "oaiChatPersistence.openChat",
+        "key": "ctrl+shift+o",
+        "mac": "cmd+shift+o"
+      }
+    ],
+    "configuration": {
+      "title": "OAI Chat Persistence",
+      "properties": {
+        "oaiChatPersistence.defaultModel": {
+          "type": "string",
+          "default": "",
+          "description": "Default VS Code language model ID to pre-select for new sessions (e.g. ollama:llama3.2). Leave blank to pick manually."
+        },
+        "oaiChatPersistence.contextWindowTokens": {
+          "type": "number",
+          "default": 6000,
+          "description": "Estimated token threshold that triggers automatic context compaction before each request. Uses the ~4 chars/token heuristic. Set to 0 to disable auto-compaction."
+        },
+        "oaiChatPersistence.compactionKeepMessages": {
+          "type": "number",
+          "default": 8,
+          "description": "Number of most-recent messages to keep verbatim after compaction. Older messages are replaced by an AI-generated summary."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run lint",
+    "lint": "echo 'No lint configured'",
+    "package": "npx @vscode/vsce package --no-dependencies"
+  },
+  "devDependencies": {}
+}
