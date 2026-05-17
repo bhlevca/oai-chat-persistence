@@ -1,3 +1,5 @@
 .vscode/**
 .gitignore
 *.vsix
+*.sh
+images/logo.png
