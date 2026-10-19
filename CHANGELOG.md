@@ -5,12 +5,17 @@ All notable changes to OAI Chat Persistence are documented here.
 ## [0.3.0] — 2026-10-18
 
 ### Added
-- **Direct local Ollama client**: directly stream from local Ollama (`/api/chat` and `/api/tags`) with full context window (`num_ctx: 8192`) without relying on external VS Code bridge extensions.
-- **Dedicated Git tools**: first-class `git_status`, `git_diff`, `git_log` and `git_commit` (with interactive diff approval before committing).
-- **Stream timeout protection**: automatic 45-second watchdog so stalled language model streams abort cleanly instead of hanging.
+- **Direct local Ollama client**: directly stream from local Ollama (`/api/chat` and `/api/tags`) with full context window (`num_ctx: 8192`) without needing any third-party bridge extension.
+- **Dedicated Git tools**: first-class `git_status`, `git_diff`, `git_log`, and `git_commit` (with interactive diff approval before committing).
+- **Grouped Model Selector**: dropdown cleanly categorizes models into `⚡ Local Ollama (Direct)` and `VS Code Models (Extensions)`.
+- **Robust tool call parser for local LLMs**: brace-depth balancing parser (`extractJsonObjects`) supporting multi-format tool calling (native Ollama, Mistral `[TOOL_CALLS]`, and nested JSON code blocks from models like Qwen2.5-coder).
+- **Clean tool stream handling**: automatically intercepts raw tool JSON emitted in text streams, strips them from the assistant chat bubble, and executes them cleanly as interactive approval cards.
+- **Stream timeout protection**: automatic 45-second watchdog so stalled or deadlocked model streams abort cleanly instead of hanging the UI.
+- **Model compatibility guide**: comprehensive documentation in `README.md` covering tested local models, tool support, and recommended agent workflows.
 
 ### Fixed
-- **Stop generation button**: fixed CSS issue where `#input-area.disabled` blocked mouse clicks on the Stop button.
+- **Stop generation button**: fixed CSS issue where `#input-area.disabled` prevented mouse clicks on the Stop button.
+- **Code block safety guard**: prevented tool call JSON blocks from accidentally being applied to active editor files.
 
 ## [0.2.0] — 2026-10-18
 
