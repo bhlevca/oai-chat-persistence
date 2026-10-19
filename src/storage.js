@@ -45,13 +45,21 @@ function loadSession(name) {
  * Create a new session. Returns existing if the name already exists.
  * @param {string} name
  * @param {string} [model]
- * @returns {{ name: string, model: string, created: string, updated: string, messages: object[] }}
+ * @param {{ agent?: boolean }} [opts]  agent=false starts the session read-only
+ * @returns {{ name: string, model: string, agent: boolean, created: string, updated: string, messages: object[] }}
  */
-function createSession(name, model) {
+function createSession(name, model, opts = {}) {
   const existing = loadSession(name);
   if (existing) return existing;
   const now = new Date().toISOString();
-  const session = { name, model: model || '', created: now, updated: now, messages: [] };
+  const session = {
+    name,
+    model: model || '',
+    agent: opts.agent !== false,
+    created: now,
+    updated: now,
+    messages: [],
+  };
   _write(name, session);
   return session;
 }
@@ -101,6 +109,7 @@ function listSessions() {
         return {
           name: s.name || f.replace(/\.json$/, ''),
           model: s.model || '',
+          agent: s.agent !== false,
           messageCount: (s.messages || []).length,
           updated: s.updated || '',
         };
@@ -119,7 +128,9 @@ function listSessions() {
 function exportSession(name) {
   const session = loadSession(name);
   if (!session) return null;
-  return session.messages.map(({ role, content }) => ({ role, content }));
+  return session.messages
+    .filter((m) => !m._tool)
+    .map(({ role, content }) => ({ role, content }));
 }
 
 function _write(name, session) {

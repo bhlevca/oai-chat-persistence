@@ -3,3 +3,4 @@
 *.vsix
 *.sh
 images/logo.png
+test/**

@@ -2,6 +2,47 @@
 
 All notable changes to OAI Chat Persistence are documented here.
 
+## [0.2.0] — 2026-10-18
+
+### Added — workspace interaction
+- **Agent mode**: the model can now change the workspace through `write_file`, `edit_file` and `delete_file`
+  tools instead of printing patches for you to copy. Toggle agent / read-only per session.
+- **Approval cards**: every change arrives in the chat as a coloured diff with `+added/-removed` counts and
+  Apply / Reject / Open diff / Apply all. `oaiChatPersistence.editApproval: auto` skips the card for edits;
+  deletions and shell commands always ask.
+- **New read tools**: `find_files` (glob), `search_text` (text/regex with `file:line` hits),
+  `get_editor_context` (active file, cursor, selection, open tabs) and `get_diagnostics` (errors/warnings).
+- **Optional shell tool** `run_shell_command` for tests, builds and git — disabled by default, never
+  auto-approved (`oaiChatPersistence.enableTerminalTool`).
+- **Code block actions**: every code block in a reply has `copy`, `apply`, `insert`, `new` and `diff`
+  buttons. The target file comes from the fence info string, a leading `# File:` line, or the active editor.
+- **Live editor references**: `@active`, `@selection`, `@tabs` and `@problems`, plus a 📎 quick-pick of
+  workspace files and a context strip showing what the model can see.
+- **Editor/explorer commands**: Add Selection to Chat (`Ctrl+Alt+O`), Explain Selection, Add Active File to
+  Chat, Add to OAI Chat (explorer, multi-select) and Fix Workspace Problems.
+- **Tool activity cards** in the transcript, collapsible to show exactly what the model read, saved with the
+  session for later auditing.
+- Test suite against a mocked VS Code API: `npm test` (no editor required).
+
+### Changed
+- Edits are applied via `vscode.WorkspaceEdit`, so `Ctrl+Z` undoes anything the model did.
+- Models without tool-calling support no longer fail: the request is retried without tools and a notice
+  explains to use `@` references.
+- Context compaction now also summarises tool activity, and its own summarisation request runs tool-free.
+- `src/ollama.js` became `src/lm.js`; the workspace primitives and tool registry live in `src/workspace.js`
+  and `src/tools.js`.
+
+### Fixed
+- `engines.vscode` raised to `^1.95.0`, the version that introduced the language-model tool API. Older
+  builds previously threw on the tool-part `instanceof` checks; the stream handler now degrades to plain
+  chat if the tool API is absent.
+
+### Security
+- Writes outside the open workspace folders are refused unless
+  `oaiChatPersistence.allowWritesOutsideWorkspace` is enabled.
+- **Stop** now also rejects any pending approval.
+- Injected file content can no longer corrupt a message through `$&`-style replacement patterns.
+
 ## [0.1.0] — 2026-05-16
 
 ### Added

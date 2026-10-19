@@ -1,8 +1,8 @@
 {
   "name": "oai-chat-persistence",
   "displayName": "OAI Chat Persistence",
-  "description": "Persistent, multi-session AI chat sidebar for any VS Code language model — Ollama, Copilot, and more. Keeps full conversation history across restarts with automatic context compaction.",
-  "version": "0.1.0",
+  "description": "Persistent, multi-session AI chat sidebar that works ON your workspace: the model reads, searches and edits your files through approved diffs. Works with Ollama, Copilot and any VS Code language model.",
+  "version": "0.2.0",
   "publisher": "bhlevca",
   "license": "MIT",
   "repository": {
@@ -13,22 +13,62 @@
   "bugs": {
     "url": "https://github.com/bhlevca/oai-chat-persistence/issues"
   },
-  "categories": ["AI", "Other"],
-  "keywords": ["chat", "ai", "ollama", "copilot", "llm", "persistence", "language model", "session"],
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "chat",
+    "ai",
+    "ollama",
+    "copilot",
+    "llm",
+    "agent",
+    "persistence",
+    "language model",
+    "session",
+    "refactor",
+    "edit files"
+  ],
   "icon": "images/icon.png",
   "galleryBanner": {
     "color": "#1e1e2e",
     "theme": "dark"
   },
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.95.0"
   },
   "main": "./src/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "oaiChatPersistence.openChat",
-        "title": "OAI Chat: Open Chat Panel",
+        "title": "Open Chat Panel",
+        "category": "OAI Chat"
+      },
+      {
+        "command": "oaiChatPersistence.addActiveFileToChat",
+        "title": "Add Active File to Chat",
+        "category": "OAI Chat"
+      },
+      {
+        "command": "oaiChatPersistence.addFileToChat",
+        "title": "Add to OAI Chat",
+        "category": "OAI Chat"
+      },
+      {
+        "command": "oaiChatPersistence.sendSelectionToChat",
+        "title": "Add Selection to Chat",
+        "category": "OAI Chat"
+      },
+      {
+        "command": "oaiChatPersistence.explainSelection",
+        "title": "Explain Selection",
+        "category": "OAI Chat"
+      },
+      {
+        "command": "oaiChatPersistence.fixProblems",
+        "title": "Fix Workspace Problems",
         "category": "OAI Chat"
       }
     ],
@@ -55,6 +95,12 @@
         "command": "oaiChatPersistence.openChat",
         "key": "ctrl+shift+o",
         "mac": "cmd+shift+o"
+      },
+      {
+        "command": "oaiChatPersistence.sendSelectionToChat",
+        "key": "ctrl+alt+o",
+        "mac": "cmd+alt+o",
+        "when": "editorHasSelection"
       }
     ],
     "configuration": {
@@ -74,13 +120,93 @@
           "type": "number",
           "default": 8,
           "description": "Number of most-recent messages to keep verbatim after compaction. Older messages are replaced by an AI-generated summary."
+        },
+        "oaiChatPersistence.defaultAgentMode": {
+          "type": "boolean",
+          "default": true,
+          "description": "Start new sessions in agent mode, where the model may edit workspace files (each change is still approved by you). Turn off for read-only sessions."
+        },
+        "oaiChatPersistence.enableWriteTools": {
+          "type": "boolean",
+          "default": true,
+          "description": "Expose the write_file / edit_file / delete_file tools to the model. Disable to make every session read-only."
+        },
+        "oaiChatPersistence.editApproval": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "auto"
+          ],
+          "enumDescriptions": [
+            "Show a diff in the chat and wait for Apply / Reject on every change.",
+            "Apply edits immediately (still undoable with Ctrl+Z); deletions and shell commands always ask."
+          ],
+          "default": "ask",
+          "description": "How workspace changes requested by the model are confirmed."
+        },
+        "oaiChatPersistence.enableTerminalTool": {
+          "type": "boolean",
+          "default": false,
+          "description": "Let the model run shell commands in the workspace root (tests, builds, git). Every command requires explicit approval and is never auto-approved."
+        },
+        "oaiChatPersistence.includeEditorContext": {
+          "type": "boolean",
+          "default": true,
+          "description": "Append a one-line note about the active file, cursor line and selection to each message you send."
+        },
+        "oaiChatPersistence.maxToolRounds": {
+          "type": "number",
+          "default": 12,
+          "description": "Maximum number of tool-call rounds the model may take in a single reply."
+        },
+        "oaiChatPersistence.maxFileBytes": {
+          "type": "number",
+          "default": 64000,
+          "description": "Maximum number of bytes of a file handed to the model by the read_file tool."
+        },
+        "oaiChatPersistence.allowWritesOutsideWorkspace": {
+          "type": "boolean",
+          "default": false,
+          "description": "Permit edits to files outside the open workspace folders. Off by default."
         }
       }
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "oaiChatPersistence.sendSelectionToChat",
+          "when": "editorHasSelection",
+          "group": "oaiChat@1"
+        },
+        {
+          "command": "oaiChatPersistence.explainSelection",
+          "when": "editorHasSelection",
+          "group": "oaiChat@2"
+        },
+        {
+          "command": "oaiChatPersistence.addActiveFileToChat",
+          "when": "editorIsOpen",
+          "group": "oaiChat@3"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "oaiChatPersistence.addFileToChat",
+          "group": "oaiChat@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "oaiChatPersistence.addFileToChat",
+          "when": "false"
+        }
+      ]
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run lint",
-    "lint": "echo 'No lint configured'",
+    "vscode:prepublish": "npm test",
+    "test": "node test/run.js",
+    "lint": "node --check src/extension.js && node --check src/panel.js && node --check src/lm.js && node --check src/tools.js && node --check src/workspace.js && node --check src/storage.js",
     "package": "npx @vscode/vsce package --no-dependencies"
   },
   "devDependencies": {}

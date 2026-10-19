@@ -419,6 +419,208 @@ body {
 /* Streaming cursor blink */
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 .cursor { animation: blink 0.7s step-end infinite; font-weight: bold; }
+
+/* ── Agent toggle ─────────────────────────────────── */
+#btn-agent {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--vscode-panel-border, #3c3c3c);
+  white-space: nowrap;
+}
+#btn-agent.agent {
+  border-color: var(--vscode-charts-green, #89d185);
+  color: var(--vscode-charts-green, #89d185);
+}
+#btn-agent.readonly {
+  border-color: var(--vscode-descriptionForeground, #888);
+  color: var(--vscode-descriptionForeground, #888);
+}
+
+/* ── Code block with actions ──────────────────────── */
+.code-wrap {
+  margin: 7px 0;
+  border: 1px solid var(--vscode-panel-border, #3c3c3c);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.code-head {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 5px;
+  background: var(--vscode-editorGroupHeader-tabsBackground, #2d2d2d);
+  border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+}
+.code-path {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground, #888);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.code-btn {
+  background: var(--vscode-button-secondaryBackground, #3a3d41);
+  color: var(--vscode-button-secondaryForeground, #ccc);
+  border: none;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.code-btn:hover { background: var(--vscode-button-background, #0e639c); color: #fff; }
+.code-btn.primary {
+  background: var(--vscode-button-background, #0e639c);
+  color: var(--vscode-button-foreground, #fff);
+}
+.code-wrap pre { margin: 0; border: none; border-radius: 0; }
+
+/* ── Tool activity card ───────────────────────────── */
+.tool-card {
+  align-self: stretch;
+  border: 1px solid var(--vscode-panel-border, #3c3c3c);
+  border-radius: 4px;
+  background: var(--vscode-editorWidget-background, #252526);
+  font-size: 11px;
+  overflow: hidden;
+}
+.tool-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.tool-head:hover { background: var(--vscode-toolbar-hoverBackground, #2a2d2e); }
+.tool-icon { flex-shrink: 0; font-size: 11px; }
+.tool-label {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--vscode-editor-font-family, monospace);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--vscode-foreground, #ccc);
+}
+.tool-status { font-size: 10px; color: var(--vscode-descriptionForeground, #888); }
+.tool-card.failed .tool-status { color: #f48771; }
+.tool-result {
+  display: none;
+  padding: 6px 8px;
+  border-top: 1px solid var(--vscode-panel-border, #3c3c3c);
+  background: var(--vscode-textCodeBlock-background, #1a1a1a);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
+}
+.tool-card.open .tool-result { display: block; }
+.tool-spin { animation: spin 1.1s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Approval card ────────────────────────────────── */
+.approval-card {
+  align-self: stretch;
+  border: 1px solid var(--vscode-inputValidation-warningBorder, #b89500);
+  border-radius: 5px;
+  background: var(--vscode-editorWidget-background, #252526);
+  overflow: hidden;
+}
+.approval-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--vscode-inputValidation-warningBackground, #352a05);
+}
+.approval-title { flex: 1; min-width: 0; word-break: break-word; }
+.approval-stats { font-size: 10px; font-weight: 400; white-space: nowrap; }
+.approval-detail {
+  padding: 4px 9px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #888);
+}
+.approval-diff {
+  margin: 0;
+  padding: 6px 9px;
+  background: var(--vscode-textCodeBlock-background, #1a1a1a);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre;
+  overflow: auto;
+  max-height: 240px;
+  border-top: 1px solid var(--vscode-panel-border, #3c3c3c);
+}
+.approval-actions {
+  display: flex;
+  gap: 6px;
+  padding: 7px 9px;
+  border-top: 1px solid var(--vscode-panel-border, #3c3c3c);
+  flex-wrap: wrap;
+}
+.approval-card.resolved .approval-actions { display: none; }
+.approval-outcome {
+  display: none;
+  padding: 6px 9px;
+  font-size: 11px;
+  border-top: 1px solid var(--vscode-panel-border, #3c3c3c);
+}
+.approval-card.resolved .approval-outcome { display: block; }
+.diff-add { color: var(--vscode-gitDecoration-addedResourceForeground, #81b88b); }
+.diff-del { color: var(--vscode-gitDecoration-deletedResourceForeground, #c74e39); }
+.diff-meta { color: var(--vscode-descriptionForeground, #888); }
+
+/* ── Notices / action results ─────────────────────── */
+.notice {
+  align-self: stretch;
+  padding: 5px 9px;
+  border-radius: 4px;
+  border: 1px dashed var(--vscode-panel-border, #3c3c3c);
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #888);
+}
+.notice.error { color: #f48771; border-color: var(--vscode-inputValidation-errorBorder, #be1100); }
+
+/* ── Context strip ────────────────────────────────── */
+#context-strip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.chip {
+  background: none;
+  border: 1px solid var(--vscode-panel-border, #3c3c3c);
+  border-radius: 10px;
+  color: var(--vscode-descriptionForeground, #888);
+  font-family: inherit;
+  font-size: 10px;
+  padding: 1px 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chip:hover { background: var(--vscode-toolbar-hoverBackground, #2a2d2e); color: var(--vscode-foreground, #ccc); }
+#chip-context {
+  cursor: default;
+  border-style: dashed;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+#chip-context:hover { background: none; color: var(--vscode-descriptionForeground, #888); }
 </style>
 </head>
 <body>
@@ -438,6 +640,7 @@ body {
 
     <div id="chat-header">
       <select id="model-select" title="Active model"></select>
+      <button class="icon-btn" id="btn-agent" title="Toggle agent mode (model may edit files)" style="display:none">🛠 agent</button>
       <button class="icon-btn" id="btn-compact"    title="Compact context now"   style="display:none">⬡</button>
       <button class="icon-btn" id="btn-sys-prompt" title="Set system prompt"     style="display:none">⚙</button>
       <button class="icon-btn" id="btn-export"     title="Export as JSON"        style="display:none">↓</button>
@@ -463,8 +666,15 @@ body {
     <div id="error-banner"></div>
 
     <div id="input-area" class="disabled">
+      <div id="context-strip">
+        <button class="chip" id="chip-pick"      title="Pick a workspace file to attach">📎 file</button>
+        <button class="chip" id="chip-active"    title="Attach the whole active file">@active</button>
+        <button class="chip" id="chip-selection" title="Attach the current editor selection">@selection</button>
+        <button class="chip" id="chip-problems"  title="Attach errors and warnings">@problems</button>
+        <span class="chip" id="chip-context">no editor</span>
+      </div>
       <textarea id="msg-input"
-        placeholder="Message… (Enter↵ send, Shift+Enter newline) — @path/file  @find:*.js  @search:myFunc  @/absolute/path"
+        placeholder="Message… (Enter↵ send, Shift+Enter newline) — @active @selection @problems @path/file @find:*.js @search:myFunc"
         rows="1"></textarea>
       <div id="input-actions">
         <button class="btn danger" id="btn-stop" style="display:none">■ Stop</button>
@@ -486,6 +696,10 @@ body {
     <select id="new-model">
       <option value="">— select model —</option>
     </select>
+    <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--vscode-descriptionForeground,#888)">
+      <input type="checkbox" id="new-agent" checked style="width:auto" />
+      Agent mode — may edit workspace files (you approve each diff)
+    </label>
     <div class="modal-actions">
       <button class="btn secondary" id="new-cancel">Cancel</button>
       <button class="btn" id="new-create">Create</button>
@@ -514,11 +728,13 @@ const vscode = acquireVsCodeApi();
 // ── State ─────────────────────────────────────────────────────────────────────
 
 const state = {
-  sessions: [],    // [{ name, model, messageCount, updated }]
+  sessions: [],    // [{ name, model, agent, messageCount, updated }]
   models:   [],    // [{ id, label, vendor, family }]
   session:  null,  // currently loaded full session object
   streaming: false,
   streamBuffer: '',
+  capabilities: { writeTools: true, terminalTool: false, autoApprove: false, defaultAgent: true, hasWorkspace: true },
+  editorContext: null,
 };
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
@@ -538,6 +754,8 @@ const btnCompact     = $('btn-compact');
 const btnSysPrompt   = $('btn-sys-prompt');
 const btnExport      = $('btn-export');
 const btnClear       = $('btn-clear');
+const btnAgent       = $('btn-agent');
+const chipContext    = $('chip-context');
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
@@ -551,8 +769,47 @@ window.addEventListener('message', ({ data: msg }) => {
     case 'init':
       state.sessions = msg.sessions;
       state.models   = msg.models;
+      if (msg.capabilities) state.capabilities = msg.capabilities;
+      if (msg.context) updateContextChip(msg.context);
       populateSessionDropdown();
       populateModelDropdowns();
+      renderAgentToggle();
+      break;
+
+    case 'editorContext':
+      updateContextChip(msg.context);
+      break;
+
+    case 'insertIntoInput':
+      insertIntoInput(msg.text, msg.autoSend);
+      break;
+
+    case 'toolStart':
+      startToolCard(msg);
+      break;
+
+    case 'toolEnd':
+      finishToolCard(msg);
+      break;
+
+    case 'toolApproval':
+      appendApprovalCard(msg.id, msg.req);
+      break;
+
+    case 'toolApprovalAuto':
+      appendNotice(`Applied automatically: ${msg.req.title}`);
+      break;
+
+    case 'approvalClosed':
+      resolveApprovalCard(msg.id, msg.approved, 'cancelled');
+      break;
+
+    case 'notice':
+      appendNotice(msg.text);
+      break;
+
+    case 'actionResult':
+      appendNotice(msg.text, msg.error);
       break;
 
     case 'sessions':
@@ -569,6 +826,7 @@ window.addEventListener('message', ({ data: msg }) => {
       state.session = msg.session;
       state._pendingUserContent = null;  // re-render from storage — no duplicate needed
       renderChat();
+      renderAgentToggle();
       break;
 
     case 'compacting':
@@ -632,6 +890,7 @@ window.addEventListener('message', ({ data: msg }) => {
           timestamp: new Date().toISOString(),
         });
       }
+      abandonPendingToolCards();
       if (msg.error) showError('Error: ' + msg.error);
       if (msg.aborted && !msg.error && !msg.assistantContent) {
         // streamEnd after manual compact-only — no error to show
@@ -693,6 +952,10 @@ function renderChat() {
   }
 
   for (const m of s.messages) {
+    if (m._tool) {
+      appendToolCard({ label: m.label || m.name, ok: m.ok !== false, result: m.content });
+      continue;
+    }
     appendMsg(m.role, m.content, { compact: !!m._compact, compactedCount: m.compactedCount });
   }
   scrollBottom();
@@ -707,6 +970,7 @@ function clearActiveSession() {
   btnSysPrompt.style.display  = 'none';
   btnExport.style.display     = 'none';
   btnClear.style.display      = 'none';
+  btnAgent.style.display      = 'none';
   inputArea.classList.add('disabled');
   btnSend.disabled = true;
   messages.innerHTML = '';
@@ -737,6 +1001,7 @@ function appendMsg(role, content, opts = {}) {
   bubble.className = 'msg-bubble';
   // Only render markdown for assistant; user/system are plain pre-wrapped
   bubble.innerHTML = (role === 'assistant') ? renderMarkdown(content) : plainText(content);
+  if (role === 'assistant') decorateCodeBlocks(bubble);
 
   const copy = document.createElement('button');
   copy.className = 'msg-copy';
@@ -803,7 +1068,7 @@ function appendStreamBubble() {
 function updateStreamBubble(content) {
   const b = $('stream-bubble');
   if (b) {
-    b.innerHTML = renderMarkdown(content) + '<span class="cursor">▋</span>';
+    b.innerHTML = renderMarkdown(content, { withActions: false }) + '<span class="cursor">▋</span>';
     scrollBottom();
   }
 }
@@ -813,6 +1078,7 @@ function finalizeStreamBubble(content) {
   if (b) {
     b.removeAttribute('id');   // free the id so the next stream gets a clean element
     b.innerHTML = renderMarkdown(content);
+    decorateCodeBlocks(b);
     const copy = document.createElement('button');
     copy.className = 'msg-copy';
     copy.textContent = 'copy';
@@ -830,19 +1096,106 @@ function finalizeStreamBubble(content) {
 
 // ── Markdown renderer ─────────────────────────────────────────────────────────
 
-function renderMarkdown(text) {
+// Code blocks are kept in a registry so their exact text can be handed back to
+// the extension (apply / insert / diff) without round-tripping through HTML.
+let cbSeq = 0;
+const codeBlocks = new Map();
+
+function renderMarkdown(text, { withActions = true } = {}) {
   let html = '';
-  const fenceRe = /```([\w]*)\n?([\s\S]*?)```/g;
+  const fenceRe = /```([^\n]*)\n?([\s\S]*?)```/g;
   let last = 0;
   let m;
   while ((m = fenceRe.exec(text)) !== null) {
     html += inlineMd(esc(text.slice(last, m.index)));
-    const lang = esc(m[1] || '');
-    html += `<pre><code class="language-${lang}">${esc(m[2] || '')}</code></pre>`;
+    html += renderCodeBlock(m[1] || '', m[2] || '', withActions);
     last = fenceRe.lastIndex;
   }
   html += inlineMd(esc(text.slice(last)));
   return html;
+}
+
+/** Split a fence info string into a language and a file path hint. */
+function parseFenceInfo(info) {
+  const parts = String(info).trim().split(/[\s,]+/).filter(Boolean);
+  let lang = '', filePath = '';
+  for (const raw of parts) {
+    const part = raw.replace(/^[("'\[]+|[)"'\]]+$/g, '').replace(/^(?:file|path|filename)[:=]/i, '');
+    const looksLikePath = /[\/\\]/.test(part) || /\.[A-Za-z0-9]{1,8}$/.test(part);
+    if (looksLikePath && !filePath) filePath = part;
+    else if (!lang) lang = part;
+  }
+  if (filePath && !lang) {
+    const ext = filePath.split('.').pop();
+    if (ext && ext !== filePath) lang = ext;
+  }
+  return { lang, path: filePath };
+}
+
+function renderCodeBlock(info, code, withActions) {
+  let { lang, path: filePath } = parseFenceInfo(info);
+  let body = code;
+
+  // @-injections (and many models) open the block with a "# File: path" line.
+  const firstLine = body.split('\n')[0] || '';
+  const hinted = firstLine.match(/^\s*(?:#|\/\/|--|<!--|;)\s*(?:File|Filename|Path)\s*:\s*(.+?)\s*(?:-->)?\s*$/i);
+  if (hinted) {
+    if (!filePath) filePath = hinted[1].trim();
+    body = body.slice(firstLine.length + 1);
+  }
+  body = body.replace(/\n$/, '');
+
+  const pre = `<pre><code class="language-${esc(lang)}">${esc(body)}</code></pre>`;
+  if (!withActions || !body.trim()) return pre;
+
+  const id = 'cb' + (++cbSeq);
+  codeBlocks.set(id, { code: body, path: filePath, lang });
+  if (codeBlocks.size > 400) codeBlocks.delete(codeBlocks.keys().next().value);
+
+  return `<div class="code-wrap" data-cb="${id}">` +
+    `<div class="code-head"><span class="code-path">${esc(filePath || lang || 'code')}</span></div>` +
+    pre + '</div>';
+}
+
+/** Add the action toolbar to every freshly rendered code block. */
+function decorateCodeBlocks(container) {
+  container.querySelectorAll('.code-wrap[data-cb]').forEach((wrap) => {
+    if (wrap.dataset.decorated) return;
+    wrap.dataset.decorated = '1';
+    const entry = codeBlocks.get(wrap.dataset.cb);
+    if (!entry) return;
+    const head = wrap.querySelector('.code-head');
+
+    const add = (text, title, handler, primary) => {
+      const b = document.createElement('button');
+      b.className = 'code-btn' + (primary ? ' primary' : '');
+      b.textContent = text;
+      b.title = title;
+      b.addEventListener('click', () => handler(b));
+      head.appendChild(b);
+      return b;
+    };
+
+    add('copy', 'Copy to clipboard', (b) => {
+      navigator.clipboard.writeText(entry.code).then(() => {
+        b.textContent = 'copied';
+        setTimeout(() => (b.textContent = 'copy'), 1400);
+      }).catch(() => {});
+    });
+
+    if (state.capabilities.hasWorkspace) {
+      add('apply', entry.path
+        ? `Replace ${entry.path} with this block (diff first)`
+        : 'Replace the active editor file with this block (diff first)',
+        () => post('applyBlock', { code: entry.code, path: entry.path }), true);
+      add('insert', 'Insert at the cursor in the active editor',
+        () => post('insertBlock', { code: entry.code }));
+      add('new', 'Save this block as a new file',
+        () => post('newFileFromBlock', { code: entry.code, path: entry.path }));
+      add('diff', 'Open a diff against the target file',
+        () => post('diffBlock', { code: entry.code, path: entry.path }));
+    }
+  });
 }
 
 function inlineMd(s) {
@@ -870,6 +1223,220 @@ function esc(str) {
     .replace(/>/g,  '&gt;')
     .replace(/"/g,  '&quot;')
     .replace(/'/g,  '&#39;');
+}
+
+// ── Tool activity cards ───────────────────────────────────────────────────────
+
+const liveToolCards = new Map();   // call id -> card element
+
+function appendToolCard({ id, label, ok, result, pending }) {
+  const card = document.createElement('div');
+  card.className = 'tool-card' + (pending ? ' pending' : (ok ? '' : ' failed'));
+
+  const head = document.createElement('div');
+  head.className = 'tool-head';
+  head.innerHTML =
+    `<span class="tool-icon">${pending ? '<span class="tool-spin">◐</span>' : ok ? '✓' : '✕'}</span>` +
+    `<span class="tool-label">${esc(label || 'tool')}</span>` +
+    `<span class="tool-status">${pending ? 'running…' : ok ? 'done' : 'failed'}</span>`;
+
+  const body = document.createElement('div');
+  body.className = 'tool-result';
+  body.textContent = result || '';
+
+  head.addEventListener('click', () => {
+    if (!body.textContent) return;
+    card.classList.toggle('open');
+  });
+
+  card.appendChild(head);
+  card.appendChild(body);
+  messages.appendChild(card);
+  scrollBottom();
+  if (id) liveToolCards.set(id, card);
+  return card;
+}
+
+function startToolCard(msg) {
+  appendToolCard({ id: msg.id, label: msg.label, pending: true });
+}
+
+function finishToolCard(msg) {
+  const card = liveToolCards.get(msg.id);
+  if (!card) {
+    appendToolCard({ label: msg.label, ok: msg.ok, result: msg.result });
+    return;
+  }
+  liveToolCards.delete(msg.id);
+  card.classList.remove('pending');
+  if (!msg.ok) card.classList.add('failed');
+  const icon   = card.querySelector('.tool-icon');
+  const status = card.querySelector('.tool-status');
+  const body   = card.querySelector('.tool-result');
+  icon.innerHTML = msg.ok ? '✓' : '✕';
+  status.textContent = msg.ok ? 'done' : 'failed';
+  body.textContent = msg.result || '';
+  scrollBottom();
+}
+
+/** A cancelled or failed turn can leave spinners behind. */
+function abandonPendingToolCards() {
+  for (const [id, card] of liveToolCards) {
+    liveToolCards.delete(id);
+    card.classList.remove('pending');
+    card.querySelector('.tool-icon').innerHTML = '–';
+    card.querySelector('.tool-status').textContent = 'stopped';
+  }
+}
+
+// ── Approval cards ────────────────────────────────────────────────────────────
+
+const approvalCards = new Map();   // approval id -> card element
+
+function renderDiffHtml(diff) {
+  return diff.split('\n').map((line) => {
+    const cls = line.startsWith('+++') || line.startsWith('---') || line.startsWith('@@')
+      ? 'diff-meta'
+      : line.startsWith('+') ? 'diff-add'
+      : line.startsWith('-') ? 'diff-del'
+      : '';
+    return cls ? `<span class="${cls}">${esc(line)}</span>` : esc(line);
+  }).join('\n');
+}
+
+function appendApprovalCard(id, req) {
+  const card = document.createElement('div');
+  card.className = 'approval-card';
+
+  const stats = req.stats ? `+${req.stats.added}/-${req.stats.removed}` : '';
+  const icon  = req.kind === 'delete' ? '🗑' : req.kind === 'shell' ? '▶' : '✎';
+
+  const head = document.createElement('div');
+  head.className = 'approval-head';
+  head.innerHTML =
+    `<span>${icon}</span><span class="approval-title">${esc(req.title)}</span>` +
+    `<span class="approval-stats">${esc(stats)}</span>`;
+  card.appendChild(head);
+
+  if (req.detail) {
+    const d = document.createElement('div');
+    d.className = 'approval-detail';
+    d.textContent = req.detail;
+    card.appendChild(d);
+  }
+
+  if (req.kind === 'shell') {
+    const pre = document.createElement('pre');
+    pre.className = 'approval-diff';
+    pre.textContent = '$ ' + req.command;
+    card.appendChild(pre);
+  } else if (req.diff) {
+    const pre = document.createElement('pre');
+    pre.className = 'approval-diff';
+    pre.innerHTML = renderDiffHtml(req.diff);
+    card.appendChild(pre);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'approval-actions';
+
+  const mkBtn = (text, cls, handler) => {
+    const b = document.createElement('button');
+    b.className = 'btn ' + cls;
+    b.textContent = text;
+    b.addEventListener('click', handler);
+    actions.appendChild(b);
+    return b;
+  };
+
+  mkBtn(req.kind === 'shell' ? 'Run' : req.kind === 'delete' ? 'Delete' : 'Apply', '', () => {
+    post('approvalResponse', { id, approved: true, applyAll: false });
+    resolveApprovalCard(id, true);
+  });
+  mkBtn('Reject', 'danger', () => {
+    post('approvalResponse', { id, approved: false });
+    resolveApprovalCard(id, false);
+  });
+  if (req.canDiff) {
+    mkBtn('Open diff', 'secondary', () => post('showApprovalDiff', { id }));
+  }
+  if (req.canApplyAll) {
+    mkBtn('Apply all', 'secondary', () => {
+      post('approvalResponse', { id, approved: true, applyAll: true });
+      resolveApprovalCard(id, true, 'applied — further changes in this reply are auto-applied');
+    });
+  }
+  card.appendChild(actions);
+
+  const outcome = document.createElement('div');
+  outcome.className = 'approval-outcome';
+  card.appendChild(outcome);
+
+  messages.appendChild(card);
+  approvalCards.set(id, card);
+  scrollBottom();
+}
+
+function resolveApprovalCard(id, approved, note) {
+  const card = approvalCards.get(id);
+  if (!card) return;
+  approvalCards.delete(id);
+  card.classList.add('resolved');
+  const outcome = card.querySelector('.approval-outcome');
+  outcome.textContent = note || (approved ? 'applied' : 'rejected');
+  outcome.style.color = approved
+    ? 'var(--vscode-charts-green, #89d185)'
+    : 'var(--vscode-descriptionForeground, #888)';
+}
+
+// ── Notices ───────────────────────────────────────────────────────────────────
+
+function appendNotice(text, isError) {
+  const el = document.createElement('div');
+  el.className = 'notice' + (isError ? ' error' : '');
+  el.textContent = text;
+  messages.appendChild(el);
+  scrollBottom();
+}
+
+// ── Workspace context strip ───────────────────────────────────────────────────
+
+function updateContextChip(ctx) {
+  state.editorContext = ctx || null;
+  if (!ctx || !ctx.file) {
+    chipContext.textContent = 'no active editor';
+    chipContext.title = '';
+    return;
+  }
+  const sel = ctx.selection
+    ? ` · sel ${ctx.selection.startLine}-${ctx.selection.endLine}`
+    : ` · line ${ctx.cursorLine}`;
+  chipContext.textContent = ctx.file.split(/[\\/]/).pop() + sel;
+  chipContext.title = ctx.file + sel;
+}
+
+function insertIntoInput(text, autoSend) {
+  const cur = msgInput.value;
+  msgInput.value = cur && !/\s$/.test(cur) ? `${cur} ${text}` : cur + text;
+  msgInput.focus();
+  autoResize();
+  if (autoSend) sendMessage();
+}
+
+// ── Agent-mode toggle ─────────────────────────────────────────────────────────
+
+function renderAgentToggle() {
+  if (!state.session || !state.capabilities.writeTools) {
+    btnAgent.style.display = 'none';
+    return;
+  }
+  const agent = state.session.agent !== false;
+  btnAgent.style.display = 'inline-flex';
+  btnAgent.className = 'icon-btn ' + (agent ? 'agent' : 'readonly');
+  btnAgent.textContent = agent ? '🛠 agent' : '👁 read-only';
+  btnAgent.title = agent
+    ? 'Agent mode: the model may edit workspace files (each change needs your approval). Click for read-only.'
+    : 'Read-only mode: the model can only read the workspace. Click to allow edits.';
 }
 
 // ── Model dropdown helpers ────────────────────────────────────────────────────
@@ -932,7 +1499,11 @@ function updateLandingModels() {
 // ── Sending a message ─────────────────────────────────────────────────────────
 
 function sendMessage() {
-  if (!state.session || state.streaming) return;
+  if (state.streaming) return;
+  if (!state.session) {
+    showError('Create or select a session first (＋ above).');
+    return;
+  }
   const content = msgInput.value.trim();
   if (!content) return;
 
@@ -1068,10 +1639,29 @@ sessionSelect.addEventListener('change', () => {
 // Refresh models
 $('btn-refresh-models').addEventListener('click', () => post('refreshModels', {}));
 
+// Agent-mode toggle
+btnAgent.addEventListener('click', () => {
+  if (!state.session) return;
+  const agent = !(state.session.agent !== false);
+  state.session.agent = agent;
+  post('setAgentMode', { name: state.session.name, agent });
+  renderAgentToggle();
+  appendNotice(agent
+    ? 'Agent mode on — the model can edit files in this workspace (you approve each change).'
+    : 'Read-only mode — the model can inspect the workspace but not change it.');
+});
+
+// Context chips
+$('chip-pick').addEventListener('click',      () => post('pickFile', {}));
+$('chip-active').addEventListener('click',    () => insertIntoInput('@active '));
+$('chip-selection').addEventListener('click', () => insertIntoInput('@selection '));
+$('chip-problems').addEventListener('click',  () => insertIntoInput('@problems '));
+
 // ── New session modal ─────────────────────────────────────────────────────────
 
 $('btn-new').addEventListener('click', () => {
   $('new-name').value = '';
+  $('new-agent').checked = state.capabilities.defaultAgent !== false;
   $('modal-new').classList.add('open');
   $('new-name').focus();
 });
@@ -1082,7 +1672,7 @@ $('new-create').addEventListener('click', () => {
   const name = $('new-name').value.trim();
   const modelId = $('new-model').value;
   if (!name) { $('new-name').focus(); return; }
-  post('createSession', { name, modelId });
+  post('createSession', { name, modelId, agent: $('new-agent').checked });
   $('modal-new').classList.remove('open');
 });
 
