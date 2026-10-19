@@ -47,10 +47,14 @@ Every session has a mode, toggled with the **🛠 agent / 👁 read-only** butto
 | `search_text` | Search the workspace for text or a regex, with `file:line` hits | — |
 | `get_editor_context` | See the active file, cursor line, selection and open tabs | — |
 | `get_diagnostics` | Read errors/warnings from language servers and linters | — |
+| `git_status` | Show branch, staged, unstaged and untracked files | — |
+| `git_diff` | Show working tree or staged changes (`staged: true`) | — |
+| `git_log` | Show recent commit history with hashes and messages | — |
 | `write_file` | Create a file or replace its whole content | ✋ diff + Apply |
 | `edit_file` | Replace an exact snippet inside a file | ✋ diff + Apply |
 | `delete_file` | Delete a file (to trash) | ✋ always asks |
-| `run_shell_command` | Run tests/builds/git in the workspace root | ✋ always asks — **off by default** |
+| `git_commit` | Commit changes to git | ✋ diff + Apply |
+| `run_shell_command` | Run tests/builds/scripts in the workspace root | ✋ always asks — **off by default** |
 
 Edits are applied as a `WorkspaceEdit`, so **Ctrl+Z undoes them** like any other edit. Writes outside the open workspace folders are refused unless you opt in.
 
@@ -119,12 +123,17 @@ Chips above the message box, plus `@` references anywhere in your message:
 - Sessions survive VS Code restarts and reloads
 
 ### Multi-model support
-Works with any extension that contributes language models via `vscode.lm`:
-- **Ollama** — local models (llama3, devstral, qwen, etc.)
-- **GitHub Copilot** — GPT-4o, Claude, and more
-- **LM Studio**, **Continue**, and others
+Supports both direct local models and VS Code hosted models:
+- **Direct Local Ollama** — auto-detects all models pulled in your local Ollama daemon (`http://127.0.0.1:11434`), streaming with full context window (`num_ctx: 8192`) and native function calling without needing any bridge extension (`devstral-small`, `qwen2.5-coder`, `llama3.1`, etc.).
+- **VS Code Language Model API** — works with GitHub Copilot (GPT-4o, Claude 3.5 Sonnet), Continue, LM Studio, and any other extension providing models to VS Code.
 
 Models that don't support tool calling still work: the extension notices, retries without tools, and tells you to use `@` references instead.
+
+### Dedicated Git integration
+Inspect and manage Git without leaving the chat:
+- Check working tree changes (`git_status`, `git_diff`)
+- Browse recent commits (`git_log`)
+- Safely commit changes (`git_commit`) with full diff preview and interactive approval
 
 ### Automatic context compaction
 - When a conversation exceeds the token budget, the extension summarises old messages using the model itself
@@ -137,16 +146,15 @@ Each tool call appears as a collapsible card (`✓ read src/app.js`) you can exp
 ### System prompts per session
 Set a persistent system prompt for each session. Survives context compaction.
 
-### Streaming with cancellation
-Responses stream token-by-token with a stop button. **Stop** also rejects any pending approval. Partial responses are displayed; failed responses leave history intact.
+### Streaming with cancellation & timeout protection
+Responses stream token-by-token with an always-clickable **■ Stop** button. An idle timeout watchdog prevents stalled streams from locking the UI. Partial responses are displayed; failed responses leave history intact.
 
 ## 🛠️ Requirements
 
 - **VS Code 1.95+** (1.95 is where the language-model tool API landed)
-- At least one extension that contributes language models:
-  - [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot)
-  - An Ollama provider extension for VS Code
-  - [Continue](https://marketplace.visualstudio.com/items?itemName=Continue.continue) or similar
+- Either:
+  - Local [Ollama](https://ollama.com/) running locally (`ollama serve`), OR
+  - An extension that contributes language models (such as [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot)).
 
 For file editing, the model must support tool calling. Most hosted models do; among local models, tool-capable builds (e.g. `qwen2.5-coder`, `devstral`, `llama3.1`) work best.
 
@@ -183,6 +191,9 @@ ext install bhlevca.oai-chat-persistence
 | `oaiChatPersistence.enableWriteTools` | `true` | Expose `write_file` / `edit_file` / `delete_file` to the model |
 | `oaiChatPersistence.editApproval` | `ask` | `ask` shows a diff card per change; `auto` applies edits immediately |
 | `oaiChatPersistence.enableTerminalTool` | `false` | Let the model run shell commands (always individually approved) |
+| `oaiChatPersistence.enableGitTools` | `true` | Expose dedicated git tools (`git_status`, `git_diff`, `git_log`, `git_commit`) |
+| `oaiChatPersistence.ollamaHost` | `http://127.0.0.1:11434` | Base URL of local Ollama server for direct local model communication |
+| `oaiChatPersistence.ollamaContextWindow` | `8192` | Context window (`num_ctx`) sent to Ollama for local model chat completions |
 | `oaiChatPersistence.includeEditorContext` | `true` | Attach a one-line note about the active file to each message |
 | `oaiChatPersistence.maxToolRounds` | `12` | Maximum tool-call rounds per reply |
 | `oaiChatPersistence.maxFileBytes` | `64000` | Byte cap for files handed to the model |
