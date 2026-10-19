@@ -312,10 +312,12 @@ body {
   flex-direction: column;
   gap: 7px;
   flex-shrink: 0;
-}
-#input-area.disabled { opacity: 0.5; pointer-events: none; }
+#input-area.disabled { opacity: 0.95; }
+#input-area.disabled #msg-input,
+#input-area.disabled #context-strip { opacity: 0.5; pointer-events: none; }
+#input-area.disabled #btn-send { pointer-events: none; opacity: 0.5; }
+#input-area.disabled #btn-stop { pointer-events: auto !important; opacity: 1 !important; cursor: pointer; }
 
-#msg-input {
   width: 100%;
   background: var(--vscode-input-background, #3c3c3c);
   color: var(--vscode-input-foreground, #d4d4d4);
@@ -1515,6 +1517,15 @@ function sendMessage() {
 
   msgInput.value = '';
   autoResize();
+
+  // Instant UI feedback while prompt/compaction/stream prepares
+  state.streaming = true;
+  typingIndicator.querySelector('span').textContent = 'Thinking…';
+  typingIndicator.classList.add('visible');
+  btnStop.style.display = 'inline-block';
+  btnSend.style.display = 'none';
+  inputArea.classList.add('disabled');
+  hideError();
 
   // Add user bubble immediately for responsiveness, and track it so we can
   // remove it if sessionLoaded (compaction) re-renders the whole chat.

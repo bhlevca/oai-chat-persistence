@@ -318,6 +318,130 @@ const shellTool = {
   },
 };
 
+// ── Git tools ─────────────────────────────────────────────────────────────────
+
+const gitReadTools = [
+  {
+    name: 'git_status',
+    mutating: false,
+    description: 'Show working tree status: branch, staged, unstaged and untracked files.',
+    inputSchema: { type: 'object', properties: {} },
+    summary: () => 'git status',
+    async run() {
+      const res = await ws.runShell('git status --short --branch');
+      if (res.code !== 0) {
+        return res.stderr.toLowerCase().includes('not a git repository')
+          ? 'Not a git repository.'
+          : `Git error: ${res.stderr || res.stdout}`;
+      }
+      return res.stdout.trim() || 'Working tree clean (no changes).';
+    },
+  },
+  {
+    name: 'git_diff',
+    mutating: false,
+    description:
+      'Show changes in the working tree or staging area. Set staged: true to inspect staged changes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        staged: { type: 'boolean', description: 'Show staged diff (--cached).' },
+        path: { type: 'string', description: 'Optional path to inspect.' },
+      },
+    },
+    summary: (i) => `git diff${i.staged ? ' (staged)' : ''}${i.path ? ` ${i.path}` : ''}`,
+    async run(input) {
+      const args = ['git', 'diff'];
+      if (input.staged) args.push('--cached');
+      if (input.path) args.push('--', input.path);
+      const res = await ws.runShell(args.join(' '));
+      if (res.code !== 0) return `Git diff error: ${res.stderr || res.stdout}`;
+      return res.stdout.trim() || '(no changes)';
+    },
+  },
+  {
+    name: 'git_log',
+    mutating: false,
+    description: 'Show recent git commit history with commit hashes, dates and messages.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        max_count: { type: 'number', description: 'Number of commits to retrieve (default 10).' },
+      },
+    },
+    summary: (i) => `git log (${i.max_count || 10})`,
+    async run(input) {
+      const count = Math.max(1, Math.min(Number(input.max_count) || 10, 50));
+      const res = await ws.runShell(`git log -n ${count} --pretty=format:"%h %ad | %s%d [%an]" --date=short`);
+      if (res.code !== 0) return `Git log error: ${res.stderr || res.stdout}`;
+      return res.stdout.trim() || 'No commits yet.';
+    },
+  },
+];
+
+const gitWriteTools = [
+  {
+    name: 'git_commit',
+    mutating: true,
+    description:
+      'Commit changes to git. Always requires user approval. Shows the changes to be committed before committing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', description: 'Git commit message.' },
+        all: { type: 'boolean', description: 'Stage all modified/deleted tracked files (-a).' },
+        files: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional file paths to stage before committing.',
+        },
+      },
+      required: ['message'],
+    },
+    summary: (i) => `git commit: "${i.message || ''}"`,
+    async run(input, ctx) {
+      const statusRes = await ws.runShell('git status --short');
+      if (statusRes.code !== 0) return `Not a git repository: ${statusRes.stderr}`;
+      if (!statusRes.stdout.trim()) return 'Nothing to commit (working tree clean).';
+
+      const message = String(input.message || '').trim();
+      if (!message) return 'Commit message cannot be empty.';
+
+      // Get diff for preview
+      const diffCmd = input.all ? 'git diff HEAD' : 'git diff --cached';
+      const diffRes = await ws.runShell(diffCmd);
+      const diffText = diffRes.stdout.trim() || statusRes.stdout.trim();
+
+      const approved = await ctx.requestApproval({
+        kind: 'shell',
+        title: `git commit: "${message}"`,
+        detail: `Status:\n${statusRes.stdout.trim()}`,
+        diff: diffText,
+        command: `git commit -m "${message}"`,
+        neverAuto: true,
+      });
+      if (!approved) return 'User rejected git commit.';
+
+      if (Array.isArray(input.files) && input.files.length) {
+        const addCmd = `git add ${input.files.map((f) => `"${f.replace(/"/g, '\\"')}"`).join(' ')}`;
+        const addRes = await ws.runShell(addCmd);
+        if (addRes.code !== 0) return `git add failed: ${addRes.stderr}`;
+      }
+
+      const safeMsg = message.replace(/"/g, '\\"');
+      const commitCmd = input.all ? `git commit -a -m "${safeMsg}"` : `git commit -m "${safeMsg}"`;
+      const commitRes = await ws.runShell(commitCmd);
+      if (commitRes.code !== 0) {
+        if (commitRes.stdout.includes('no changes added to commit') || commitRes.stderr.includes('no changes added to commit')) {
+          return 'Nothing was staged for commit. Stage files first or pass all: true to commit tracked modified files.';
+        }
+        return `git commit failed: ${commitRes.stderr || commitRes.stdout}`;
+      }
+      return commitRes.stdout.trim();
+    },
+  },
+];
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 
 /**
@@ -326,6 +450,10 @@ const shellTool = {
  */
 function toolsFor({ agent = true } = {}) {
   const list = [...readTools];
+  if (cfg().get('enableGitTools') !== false) {
+    list.push(...gitReadTools);
+    if (agent) list.push(...gitWriteTools);
+  }
   if (agent && cfg().get('enableWriteTools') !== false) list.push(...writeTools);
   if (agent && cfg().get('enableTerminalTool') === true) list.push(shellTool);
   return list;
@@ -360,4 +488,14 @@ function summarize(tools, name, input) {
   try { return tool?.summary?.(input || {}) || name; } catch { return name; }
 }
 
-module.exports = { toolsFor, toLmTools, execute, summarize, readTools, writeTools, shellTool };
+module.exports = {
+  toolsFor,
+  toLmTools,
+  execute,
+  summarize,
+  readTools,
+  writeTools,
+  shellTool,
+  gitReadTools,
+  gitWriteTools,
+};

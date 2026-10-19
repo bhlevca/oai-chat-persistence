@@ -168,6 +168,21 @@
           "type": "boolean",
           "default": false,
           "description": "Permit edits to files outside the open workspace folders. Off by default."
+        },
+        "oaiChatPersistence.ollamaHost": {
+          "type": "string",
+          "default": "http://127.0.0.1:11434",
+          "description": "Base URL of the Ollama server for direct local model communication."
+        },
+        "oaiChatPersistence.ollamaContextWindow": {
+          "type": "number",
+          "default": 8192,
+          "description": "Context window (num_ctx) sent to Ollama for local model requests."
+        },
+        "oaiChatPersistence.enableGitTools": {
+          "type": "boolean",
+          "default": true,
+          "description": "Expose dedicated git tools (git_status, git_diff, git_log, git_commit) to the model."
         }
       }
     },

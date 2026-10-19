@@ -53,6 +53,9 @@ const config = {
   enableTerminalTool: true,
   includeEditorContext: true,
   defaultAgentMode: true,
+  ollamaHost: 'http://127.0.0.1:11434',
+  ollamaContextWindow: 8192,
+  enableGitTools: true,
 };
 
 const state = { folders: [], activeEditor: null, diagnostics: [], infoMessages: [] };

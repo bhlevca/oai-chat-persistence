@@ -135,6 +135,34 @@ const capturing   = { requestApproval: async (req) => { captured.push(req); retu
   ok(ws.isInsideWorkspace(ws.resolveUri('src/app.js')), 'containment check accepts a workspace file');
   ok(!ws.isInsideWorkspace(mock.Uri.file('/etc/passwd')), 'containment check rejects /etc');
 
+  console.log('\n# git tools');
+  r = await run('git_status', {});
+  ok(r.text.includes('Not a git repository'), 'git_status reports non-repo workspace', r.text);
+  await ws.runShell('git init -b main && git config user.name "Test" && git config user.email "test@example.com"', { cwd: root });
+  r = await run('git_status', {});
+  ok(r.text.includes('src/app.js') || r.text.includes('??'), 'git_status reports untracked files', r.text);
+
+  r = await run('git_log', {});
+  ok(r.text.includes('No commits yet') || r.text.includes('Git log error'), 'git_log handles empty repo', r.text);
+
+  r = await run('git_commit', { message: 'initial' }, rejectAll);
+  ok(r.text.startsWith('User rejected'), 'rejected git_commit does not commit', r.text);
+
+  const commitReq = [];
+  r = await run('git_commit', { message: 'initial commit', all: true, files: ['src/app.js'] }, {
+    requestApproval: async (q) => { commitReq.push(q); return true; },
+  });
+  ok(commitReq.length > 0 && commitReq[0].title.includes('initial commit'), 'git_commit requests approval');
+  ok(r.text.includes('initial commit') || r.ok, 'git_commit creates commit', r.text);
+
+  r = await run('git_log', { max_count: 5 });
+  ok(r.text.includes('initial commit'), 'git_log shows new commit', r.text);
+
+  // Modify file to test git_diff
+  fs.appendFileSync(path.join(root, 'src', 'app.js'), '// added line\n');
+  r = await run('git_diff', {});
+  ok(r.text.includes('+ // added line') || r.text.includes('added line'), 'git_diff reports working tree changes', r.text);
+
   fs.rmSync(root, { recursive: true, force: true });
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
