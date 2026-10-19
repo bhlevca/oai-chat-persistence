@@ -163,7 +163,7 @@ async function listOllamaModels() {
       const name = m.name || m.model;
       return {
         id:     `ollama:${name}`,
-        label:  `${name} (Ollama)`,
+        label:  name,
         vendor: 'Ollama',
         family: m.details?.family || '',
       };
@@ -173,9 +173,12 @@ async function listOllamaModels() {
   }
 }
 
-/** Check if text contains Mistral [TOOL_CALLS] or JSON blocks */
-function extractTextToolCalls(text) {
+/** Check if text contains Mistral [TOOL_CALLS] or raw JSON tool-call blocks */
+function extractTextToolCalls(text, activeTools = []) {
   const calls = [];
+  const knownNames = new Set(activeTools.map((t) => t.name));
+
+  // 1. Mistral format: [TOOL_CALLS] [...]
   const idx = text.indexOf('[TOOL_CALLS]');
   if (idx !== -1) {
     const after = text.slice(idx + '[TOOL_CALLS]'.length).trim();
@@ -187,17 +190,34 @@ function extractTextToolCalls(text) {
             calls.push({
               callId: crypto.randomBytes(6).toString('hex'),
               name: item.name,
-              input: item.arguments || {},
+              input: item.arguments || item.parameters || {},
             });
           }
         }
       }
-    } catch {
-      // not JSON
+    } catch {}
+  }
+
+  // 2. Direct JSON or fenced code block tool call (e.g. Qwen2.5-coder or local models)
+  if (!calls.length) {
+    const jsonMatches = text.match(/\{[\s\S]*?"name"\s*:\s*"[^"]+"[\s\S]*?\}/g) || [];
+    for (const raw of jsonMatches) {
+      try {
+        const obj = JSON.parse(raw);
+        if (obj && typeof obj.name === 'string' && (knownNames.size === 0 || knownNames.has(obj.name))) {
+          calls.push({
+            callId: crypto.randomBytes(6).toString('hex'),
+            name: obj.name,
+            input: obj.arguments || obj.parameters || {},
+          });
+        }
+      } catch {}
     }
   }
+
   return calls;
 }
+
 
 /**
  * Direct stream chat completion against Ollama /api/chat.
@@ -332,9 +352,9 @@ async function streamOllamaChat(modelId, messages, handlers, cancellationToken, 
       reader.releaseLock();
     }
 
-    // Fallback: extract Mistral text tool calls if the model outputted them into content
-    if (!toolCalls.length && roundText.includes('[TOOL_CALLS]')) {
-      toolCalls.push(...extractTextToolCalls(roundText));
+    // Fallback: extract tool calls if the model outputted them into content (Mistral, Qwen, etc.)
+    if (!toolCalls.length) {
+      toolCalls.push(...extractTextToolCalls(roundText, activeTools));
     }
 
     if (!toolCalls.length || cancellationToken.isCancellationRequested) break;

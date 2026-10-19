@@ -1444,42 +1444,51 @@ function renderAgentToggle() {
 // ── Model dropdown helpers ────────────────────────────────────────────────────
 
 function populateModelDropdowns() {
-  // Main header select
-  const cur = modelSelect.value;
-  modelSelect.innerHTML = '';
-
-  if (!state.models.length) {
-    const o = document.createElement('option');
-    o.value = '';
-    o.textContent = 'No models — install GitHub Copilot or a VS Code LM extension';
-    modelSelect.appendChild(o);
-  } else {
-    // Leading blank so users must actively pick a model
+  function populateSelect(selectEl, curVal) {
+    selectEl.innerHTML = '';
+    if (!state.models.length) {
+      const o = document.createElement('option');
+      o.value = '';
+      o.textContent = 'No models — start Ollama or install Copilot';
+      selectEl.appendChild(o);
+      return;
+    }
     const blank = document.createElement('option');
     blank.value = '';
     blank.textContent = '— select model —';
-    modelSelect.appendChild(blank);
+    selectEl.appendChild(blank);
 
-    for (const m of state.models) {
-      const o = document.createElement('option');
-      o.value = m.id;
-      o.textContent = m.label + (m.vendor ? ` (${m.vendor})` : '');
-      modelSelect.appendChild(o);
+    const ollamaModels = state.models.filter(m => m.id.startsWith('ollama:') || m.vendor === 'Ollama');
+    const vscodeModels = state.models.filter(m => !(m.id.startsWith('ollama:') || m.vendor === 'Ollama'));
+
+    if (ollamaModels.length) {
+      const grp = document.createElement('optgroup');
+      grp.label = '⚡ Local Ollama (Direct)';
+      for (const m of ollamaModels) {
+        const o = document.createElement('option');
+        o.value = m.id;
+        o.textContent = m.label;
+        grp.appendChild(o);
+      }
+      selectEl.appendChild(grp);
     }
-  }
-  modelSelect.value = cur;
 
-  // New-session modal select
-  const newModel = $('new-model');
-  const curNew = newModel.value;
-  newModel.innerHTML = '<option value="">— select model —</option>';
-  for (const m of state.models) {
-    const o = document.createElement('option');
-    o.value = m.id;
-    o.textContent = m.label + (m.vendor ? ` (${m.vendor})` : '');
-    newModel.appendChild(o);
+    if (vscodeModels.length) {
+      const grp = document.createElement('optgroup');
+      grp.label = 'VS Code Models (Extensions)';
+      for (const m of vscodeModels) {
+        const o = document.createElement('option');
+        o.value = m.id;
+        o.textContent = m.label + (m.vendor ? ` (${m.vendor})` : '');
+        grp.appendChild(o);
+      }
+      selectEl.appendChild(grp);
+    }
+    selectEl.value = curVal;
   }
-  newModel.value = curNew;
+
+  populateSelect(modelSelect, modelSelect.value);
+  populateSelect($('new-model'), $('new-model').value);
 
   // Update landing page model list if no session is active
   if (!state.session) updateLandingModels();
