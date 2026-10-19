@@ -2,6 +2,16 @@
 
 All notable changes to OAI Chat Persistence are documented here.
 
+## [0.3.0] — 2026-10-18
+
+### Added
+- **Direct local Ollama client**: directly stream from local Ollama (`/api/chat` and `/api/tags`) with full context window (`num_ctx: 8192`) without relying on external VS Code bridge extensions.
+- **Dedicated Git tools**: first-class `git_status`, `git_diff`, `git_log` and `git_commit` (with interactive diff approval before committing).
+- **Stream timeout protection**: automatic 45-second watchdog so stalled language model streams abort cleanly instead of hanging.
+
+### Fixed
+- **Stop generation button**: fixed CSS issue where `#input-area.disabled` blocked mouse clicks on the Stop button.
+
 ## [0.2.0] — 2026-10-18
 
 ### Added — workspace interaction

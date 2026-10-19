@@ -2,7 +2,7 @@
   "name": "oai-chat-persistence",
   "displayName": "OAI Chat Persistence",
   "description": "Persistent, multi-session AI chat sidebar that works ON your workspace: the model reads, searches and edits your files through approved diffs. Works with Ollama, Copilot and any VS Code language model.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "bhlevca",
   "license": "MIT",
   "repository": {
