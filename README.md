@@ -149,6 +149,47 @@ Set a persistent system prompt for each session. Survives context compaction.
 ### Streaming with cancellation & timeout protection
 Responses stream token-by-token with an always-clickable **■ Stop** button. An idle timeout watchdog prevents stalled streams from locking the UI. Partial responses are displayed; failed responses leave history intact.
 
+---
+
+## 🧠 Model Compatibility & Local LLM Guide
+
+> [!IMPORTANT]
+> **For 🛠 Agent Mode (reading, writing, editing files, and running git commands), the model MUST support tool/function calling.**
+> If you select a model that does not support tools, it cannot interact with your filesystem. Always check model compatibility below.
+
+### Tested Models & Capabilities
+
+| Model | Tool Calling Support | Agent Mode (File/Git edits) | Notes |
+|---|---|---|---|
+| **`devstral-small-2:24b`** / `devstral` | ✅ Native (`tool_calls`) | 🟢 **Recommended** | Specifically designed for developer agents. Generates fast, precise tool calls for reading, editing, and git commands. |
+| **`qwen2.5-coder:14b`** / `32b` / `7b` | ✅ Native / JSON fallback | 🟢 **Recommended** | Outstanding coding abilities. Automatically parsed via native Ollama tool calls or structured JSON. |
+| **`mistral-small3.2:24b`** / `mistral-nemo` | ✅ Native | 🟢 **Recommended** | Very reliable tool-calling and code understanding. |
+| **`llama3.1`** / **`llama3.2`** | ✅ Native | 🟢 **Recommended** | Robust general tool calling support in Ollama. |
+| **Claude 3.5 Sonnet / GPT-4o** (Copilot/VS Code) | ✅ Native | 🟢 **Recommended** | Full tool support via standard VS Code Language Model API. |
+| **`deepseek-r1`** (`14b`, `32b`, `70b`, etc.) | ❌ **No Tool Support** in Ollama | 🔴 **Unsupported** (Hallucinates edits) | **Pure reasoning model**. Ollama does not support function calling for R1. When asked to edit files, it will output fake terminal logs (e.g. ````bash $ find . -name "..."````) and hallucinate that it created files. **Use in 👁 read-only mode** with `@` mentions and the code block `apply` button. |
+| **`gemma3`** / **`gemma2`** (`12b`, `9b`) | ❌ **No Tool Support** in Ollama | 🔴 **Unsupported** | Ollama explicitly rejects requests with tools (*"gemma does not support tools"*). The extension automatically detects this and retries without tools in chat-only mode. |
+
+### Direct Local Ollama vs. Bridge Extensions
+
+In the model selector dropdown, models are organized into two groups:
+1. **⚡ Local Ollama (Direct)**: Communicates directly with your local Ollama daemon (`http://127.0.0.1:11434`). This provides:
+   - Full context window (`num_ctx: 8192` by default, configurable in settings).
+   - Fast token-by-token streaming without bridge proxy overhead.
+   - Robust multi-format tool call parsing (native `tool_calls`, Mistral format, and JSON fallback).
+2. **VS Code Models (Extensions)**: Hosted cloud models (e.g. GitHub Copilot) or local models provided through third-party bridge extensions (e.g. Continue, LM Studio).
+
+### How to use Non-Tool Models (e.g., DeepSeek-R1)
+
+If you want to use a reasoning model like `deepseek-r1` for its problem-solving abilities:
+1. Switch the session to **👁 read-only** mode (toggle the button in the header).
+2. Use `@` context chips (e.g. `@active`, `@problems`, `@src/app.js`) to provide the necessary code in your prompt.
+3. When the model outputs code blocks, use the inline toolbar buttons on each block:
+   - Click **`apply`** to write the block to your file with a diff review.
+   - Click **`new`** to create a new file from the snippet.
+   - Click **`insert`** to paste at the current editor cursor.
+
+---
+
 ## 🛠️ Requirements
 
 - **VS Code 1.95+** (1.95 is where the language-model tool API landed)
@@ -156,7 +197,7 @@ Responses stream token-by-token with an always-clickable **■ Stop** button. An
   - Local [Ollama](https://ollama.com/) running locally (`ollama serve`), OR
   - An extension that contributes language models (such as [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot)).
 
-For file editing, the model must support tool calling. Most hosted models do; among local models, tool-capable builds (e.g. `qwen2.5-coder`, `devstral`, `llama3.1`) work best.
+For file editing, the model must support tool calling (see [Model Compatibility & Local LLM Guide](#-model-compatibility--local-llm-guide) above). Models like `devstral-small`, `qwen2.5-coder`, and `llama3.1` work best.
 
 ## 📦 Installation
 
