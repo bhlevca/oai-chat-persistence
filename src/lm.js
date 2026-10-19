@@ -21,7 +21,8 @@ const AGENT_PREAMBLE = [
   '- Use search_text / find_files to locate code rather than guessing paths.',
   '- Apply changes with edit_file (targeted) or write_file (whole file). Never print a patch and ask the user to apply it by hand.',
   '- write_file needs the complete final content; never use placeholders like "... rest unchanged".',
-  '- Every change is shown to the user as a diff for approval. If a change is rejected, stop and ask what to do differently.',
+  '- Call tools IMMEDIATELY when the user asks for a change or file inspection. Do NOT ask for permission, do NOT ask "Would you like me to proceed?", and do NOT print diffs in chat first. The environment automatically displays approval diffs to the user when you invoke a tool.',
+  '- If a change is rejected by the user, stop and ask what to do differently.',
   '- After editing code, consider get_diagnostics to verify it still compiles.',
   '- Keep prose short; the work happens in the files.',
 ].join('\n');
@@ -173,6 +174,49 @@ async function listOllamaModels() {
   }
 }
 
+/**
+ * Extract all balanced JSON objects { ... } from text, properly respecting
+ * string escaping and nested braces.
+ */
+function extractJsonObjects(text) {
+  const results = [];
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escape = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+
+    if (ch === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (ch === '}') {
+      if (depth > 0) {
+        depth--;
+        if (depth === 0 && start !== -1) {
+          results.push(text.slice(start, i + 1));
+          start = -1;
+        }
+      }
+    }
+  }
+  return results;
+}
+
 /** Check if text contains Mistral [TOOL_CALLS] or raw JSON tool-call blocks */
 function extractTextToolCalls(text, activeTools = []) {
   const calls = [];
@@ -186,7 +230,7 @@ function extractTextToolCalls(text, activeTools = []) {
       const parsed = JSON.parse(after);
       if (Array.isArray(parsed)) {
         for (const item of parsed) {
-          if (item?.name) {
+          if (item?.name && (knownNames.size === 0 || knownNames.has(item.name))) {
             calls.push({
               callId: crypto.randomBytes(6).toString('hex'),
               name: item.name,
@@ -198,17 +242,28 @@ function extractTextToolCalls(text, activeTools = []) {
     } catch {}
   }
 
-  // 2. Direct JSON or fenced code block tool call (e.g. Qwen2.5-coder or local models)
+  // 2. Direct JSON or fenced code block tool calls (e.g. Qwen2.5-coder, Llama, Ollama models)
   if (!calls.length) {
-    const jsonMatches = text.match(/\{[\s\S]*?"name"\s*:\s*"[^"]+"[\s\S]*?\}/g) || [];
-    for (const raw of jsonMatches) {
+    const jsonBlocks = extractJsonObjects(text);
+    for (const raw of jsonBlocks) {
       try {
         const obj = JSON.parse(raw);
-        if (obj && typeof obj.name === 'string' && (knownNames.size === 0 || knownNames.has(obj.name))) {
+        if (!obj || typeof obj !== 'object') continue;
+
+        // Formats supported:
+        // A. { name: "...", arguments: { ... } }
+        // B. { tool: "...", parameters: { ... } }
+        // C. { type: "function", function: { name: "...", arguments: { ... } } }
+        const name = obj.name || obj.tool || (obj.type === 'function' && obj.function?.name);
+        if (name && typeof name === 'string' && (knownNames.size === 0 || knownNames.has(name))) {
+          let input = obj.arguments || obj.parameters || obj.function?.arguments || {};
+          if (typeof input === 'string') {
+            try { input = JSON.parse(input); } catch {}
+          }
           calls.push({
             callId: crypto.randomBytes(6).toString('hex'),
-            name: obj.name,
-            input: obj.arguments || obj.parameters || {},
+            name,
+            input: typeof input === 'object' && input !== null ? input : {},
           });
         }
       } catch {}
@@ -216,6 +271,27 @@ function extractTextToolCalls(text, activeTools = []) {
   }
 
   return calls;
+}
+
+/**
+ * Remove raw tool call JSON or Mistral blocks from user-facing text
+ * so that raw JSON blocks never display in the chat bubble when executed as tools.
+ */
+function stripToolCallText(text) {
+  let cleaned = text;
+  const objs = extractJsonObjects(cleaned);
+  for (const raw of objs) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.name || parsed?.tool || parsed?.function?.name) {
+        cleaned = cleaned.replace(raw, '');
+      }
+    } catch {}
+  }
+  return cleaned
+    .replace(/```(?:json)?\s*```/g, '')
+    .replace(/\[TOOL_CALLS\]\s*\[[\s\S]*?\]/g, '')
+    .trim();
 }
 
 
@@ -252,6 +328,7 @@ async function streamOllamaChat(modelId, messages, handlers, cancellationToken, 
 
   for (let round = 0; round < maxRounds; round++) {
     if (cancellationToken.isCancellationRequested) break;
+    const prevFullText = fullText;
 
     const controller = new AbortController();
     const cancelSub = cancellationToken.onCancellationRequested?.(() => controller.abort());
@@ -355,6 +432,12 @@ async function streamOllamaChat(modelId, messages, handlers, cancellationToken, 
     // Fallback: extract tool calls if the model outputted them into content (Mistral, Qwen, etc.)
     if (!toolCalls.length) {
       toolCalls.push(...extractTextToolCalls(roundText, activeTools));
+    }
+
+    if (toolCalls.length) {
+      const cleanRound = stripToolCallText(roundText);
+      fullText = prevFullText + (cleanRound ? (prevFullText ? '\n' : '') + cleanRound : '');
+      handlers.onResetStream?.(fullText);
     }
 
     if (!toolCalls.length || cancellationToken.isCancellationRequested) break;
@@ -508,6 +591,7 @@ async function streamVSCodeLmChat(modelId, messages, handlers, cancellationToken
       throw err;
     }
 
+    const prevFullText = fullText;
     const roundText = [];
     const toolCalls = [];
 
@@ -528,6 +612,21 @@ async function streamVSCodeLmChat(modelId, messages, handlers, cancellationToken
         onChunk(chunk.value);
         fullText += chunk.value;
       }
+    }
+
+    // Fallback: extract tool calls if the model outputted them into content
+    if (!toolCalls.length) {
+      const textContent = roundText.join('');
+      const fallbackCalls = extractTextToolCalls(textContent, activeTools);
+      if (fallbackCalls.length) {
+        toolCalls.push(...fallbackCalls);
+      }
+    }
+
+    if (toolCalls.length) {
+      const cleanRound = stripToolCallText(roundText.join(''));
+      fullText = prevFullText + (cleanRound ? (prevFullText ? '\n' : '') + cleanRound : '');
+      handlers.onResetStream?.(fullText);
     }
 
     if (!toolCalls.length || cancellationToken.isCancellationRequested) break;

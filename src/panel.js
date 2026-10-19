@@ -319,6 +319,10 @@ class ChatPanel {
   }
 
   async _applyBlock({ code, path: hintPath }) {
+    if (/^\s*(?:\{[\s\S]*?"(?:name|tool)"\s*:|\[TOOL_CALLS\])/.test(code)) {
+      vscode.window.showWarningMessage('OAI Chat: This code block appears to be a tool call, not file content.');
+      return;
+    }
     const uri = await this._resolveBlockTarget(hintPath);
     if (!uri) {
       vscode.window.showWarningMessage(
@@ -663,6 +667,7 @@ class ChatPanel {
         session.messages,
         {
           onChunk: (chunk) => this._post({ type: 'chunk', content: chunk }),
+          onResetStream: (content) => this._post({ type: 'resetStream', content: content || '' }),
           onNotice: (text) => this._post({ type: 'notice', text }),
           onToolStart: (info) => this._post({
             type: 'toolStart', id: info.id, name: info.name, label: info.label,

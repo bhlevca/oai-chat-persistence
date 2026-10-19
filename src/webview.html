@@ -872,6 +872,18 @@ window.addEventListener('message', ({ data: msg }) => {
       updateStreamBubble(state.streamBuffer);
       break;
 
+    case 'resetStream':
+      state.streamBuffer = msg.content || '';
+      if (streamRow) {
+        if (state.streamBuffer && state.streamBuffer.trim()) {
+          streamRow.querySelector('.bubble').innerHTML = renderMarkdown(state.streamBuffer, { streaming: true });
+        } else {
+          streamRow.remove();
+          streamRow = null;
+        }
+      }
+      break;
+
     case 'streamEnd':
       state.streaming = false;
       typingIndicator.classList.remove('visible');

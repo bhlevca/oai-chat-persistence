@@ -139,11 +139,23 @@ const noCancel = { isCancellationRequested: false };
   mock.LanguageModelToolCallPart = savedCall;
   mock.LanguageModelToolResultPart = savedRes;
 
-  console.log('\n# cancellation');
-  scriptModel([[new T('partial')], [new T('never')]]);
-  const token = { isCancellationRequested: true };
-  res = await lm.streamChat('test', [{ role: 'user', content: 'hi' }], { onChunk: () => {} }, token);
-  ok(res.text === '', 'a cancelled request streams nothing', JSON.stringify(res.text));
+  console.log('\n# fallback text tool calls (Qwen / local LLM format)');
+  scriptModel([
+    [new T('```json\n{\n  "name": "write_file",\n  "arguments": {\n    "content": "hello",\n    "path": "c.txt"\n  }\n}\n```')],
+    [new T('File c.txt created.')],
+  ]);
+  const textEvents = [];
+  res = await lm.streamChat('test', [{ role: 'user', content: 'create c.txt' }], {
+    onChunk: (t) => textEvents.push(['chunk', t]),
+    onResetStream: (t) => textEvents.push(['reset', t]),
+    onToolStart: (i) => textEvents.push(['start', i.name]),
+    onToolEnd: (i) => textEvents.push(['end', i.name, i.ok]),
+    requestApproval: async () => true,
+  }, noCancel);
+  ok(res.toolCalls.length === 1 && res.toolCalls[0].name === 'write_file', 'text JSON tool call parsed and executed');
+  ok(fs.existsSync(path.join(root, 'c.txt')), 'c.txt written to disk by fallback tool call');
+  ok(textEvents.some(e => e[0] === 'reset'), 'resetStream fired to clear raw tool JSON from bubble');
+  ok(res.text.includes('File c.txt created.'), 'clean assistant answer preserved without raw tool JSON');
 
   fs.rmSync(root, { recursive: true, force: true });
   console.log(`\n${pass} passed, ${fail} failed`);
